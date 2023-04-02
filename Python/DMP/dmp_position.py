@@ -24,7 +24,7 @@ class PositionDMP():
         # Initially weights are zero (no forcing term)
         self.w = np.zeros((3, self.n_bfs))
 
-        # Initial- and goal positions
+        # Initial- and goal- positions
         self.p0 = np.zeros(3)
         self.gp = np.zeros(3)
 
@@ -36,9 +36,6 @@ class PositionDMP():
             return self.Dp.dot(self.w.dot(psi) / psi.sum() * xj)
 
         # DMP system acceleration
-        # TODO: Implement the transformation system differential equation for the acceleration, given that you know the
-        # values of the following variables:
-        # self.alpha, self.beta, self.gp, self.p, self.dp, tau, x
         
         self.ddp = (self.alpha * (self.beta * (self.gp - self.p) - (tau * self.dp)) + fp(x))/ (tau**2)
         

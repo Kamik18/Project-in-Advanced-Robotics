@@ -1,5 +1,4 @@
 from __future__ import division, print_function
-
 import numpy as np
 from pyquaternion import Quaternion
 from canonical_system import CanonicalSystem
@@ -25,7 +24,7 @@ class RotationDMP():
         # Initially weights are zero (no forcing term)
         self.w = np.zeros((3, self.n_bfs))
 
-        # Initial- and goal positions
+        # Initial- and goal- positions
         self.q0 = Quaternion(np.zeros(4))
         self.gq = Quaternion(np.zeros(4))
 
@@ -37,17 +36,15 @@ class RotationDMP():
             return self.Dp.dot(self.w.dot(psi) / psi.sum() * xj)
 
         f = fp(x)
+        # Set as Quaternions
         f_alt = np.array([0, f[0], f[1], f[2]])
         
-        #self.eta[0] = 0
-        
         self.eta_dot = (self.alpha*(self.beta*2*Quaternion.log( self.gq * self.q.conjugate ) - self.eta)+f_alt)
-
-        #self.eta_dot[0] = 0
-
+        
         self.eta += self.eta_dot * dt / tau
-
+        
         self.q = Quaternion.exp((dt/2)*self.eta/tau)*self.q
+
         return self.q, self.eta/tau, self.eta_dot
 
     def rollout(self, ts, tau):
@@ -70,7 +67,6 @@ class RotationDMP():
         return q, dq, ddq
 
     def reset(self):
-        #self.q = copy.copy(self.q0)
         self.q = Quaternion(self.q0)
         self.eta = Quaternion(np.zeros(4))
         self.eta_dot = Quaternion(np.zeros(4))
@@ -97,13 +93,15 @@ class RotationDMP():
 
         # Desired velocities and accelerations
         # ***** Change to be the values of 2*log(g*q.conj) or some form of velocity and acceleration of the training data.
-        d_q = [Quaternion([0,0,0,0])]
-        dd_q = [Quaternion([0,0,0,0])]
+        d_q = [Quaternion(np.zeros(4))]
+        dd_q = [Quaternion(np.zeros(4))]
+        
         for i in range(len(q)-1):
             d_q.append( 2*Quaternion.log(q[i+1]*q[i].conjugate) / dt[i] )
         for i in range(len(d_q)-1):
             dd_q.append( (d_q[i+1] - d_q[i]) / dt[i] )
-        dd_q.append(Quaternion([0, 0, 0, 0]))
+        
+        dd_q.append(Quaternion(np.zeros(4)))
 
 
         # Integrate canonical system
@@ -121,7 +119,6 @@ class RotationDMP():
         A = np.stack(features(xj) for xj in x)
         f = np.stack(forcing(j) for j in range(len(ts)))
         
-        # Least squares solution for Aw = f (for each column of f)
         self.w = np.linalg.lstsq(A, f, rcond=None)[0].T
 
         # Cache variables for later inspection
