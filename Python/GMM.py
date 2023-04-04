@@ -98,7 +98,7 @@ class GMM:
 
         random_state = check_random_state(0)
         # TODO set n_components
-        n_components = 64
+        n_components = 8
         initial_means = kmeansplusplus_initialization(
             X_train, n_components, random_state)
         initial_covs = covariance_initialization(X_train, n_components)
@@ -222,7 +222,7 @@ class GMM:
 
 
 if __name__ == "__main__":
-    data = simulation_data(n_demonstrations=1000, n_steps=100)
+    data = simulation_data(n_demonstrations=50, n_steps=100)
 
     GMM_translation = GMM(data=data)
     GMM_translation.plot("path")
