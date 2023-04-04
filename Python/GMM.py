@@ -1,4 +1,3 @@
-import csv
 from gmr.utils import check_random_state
 from gmr import gmm, kmeansplusplus_initialization, covariance_initialization
 from itertools import cycle
@@ -112,16 +111,11 @@ class GMM:
             random_state=random_state)
 
         means_over_time = []
-        y_stds = []
         for step in t:
             conditional_gmm = self.gmm.condition([0], np.array([step]))
             conditional_mvn = conditional_gmm.to_mvn()
             means_over_time.append(conditional_mvn.mean)
-            y_stds.append(np.sqrt(conditional_mvn.covariance[1, 1]))
-            samples = conditional_gmm.sample(100)
-            #plt.scatter(samples[:, 0], samples[:, 1], s=1)
         means_over_time = np.array(means_over_time)
-        y_stds = np.array(y_stds)
         self.__gmm_path: dict = {
             "x": means_over_time[:, 0],
             "y": means_over_time[:, 1],

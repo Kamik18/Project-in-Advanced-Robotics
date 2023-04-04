@@ -22,9 +22,8 @@ if not __GMR_SETUP__:
 
     __all__ = ["gmm", "mvn", "utils", "sklearn"]
 
-    from .mvn import MVN, plot_error_ellipse
-    from .gmm import (gmm, plot_error_ellipses, kmeansplusplus_initialization,
+    from .mvn import MVN
+    from .gmm import (gmm, kmeansplusplus_initialization,
                       covariance_initialization)
 
-    __all__.extend(["MVN", "plot_error_ellipse", "GMM", "plot_error_ellipses",
-                    "kmeansplusplus_initialization", "covariance_initialization"])
+    __all__.extend(["MVN", "GMM", "kmeansplusplus_initialization", "covariance_initialization"])
