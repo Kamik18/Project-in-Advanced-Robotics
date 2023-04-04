@@ -34,7 +34,7 @@ def euler_from_quaternion(x, y, z, w):
 if __name__ == '__main__':
     
     # Load a demonstration file containing robot positions.
-    demo = np.loadtxt("pydmp_exercise\pydmp_exercise\demo.dat", delimiter=" ", skiprows=1)
+    demo = np.loadtxt("Python\DMP\demo.dat", delimiter=" ", skiprows=1)
 
     tau = 0.002 * len(demo)
     t = np.arange(0, tau, 0.002)
