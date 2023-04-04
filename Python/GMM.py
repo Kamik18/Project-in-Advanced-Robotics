@@ -1,6 +1,6 @@
 import csv
 from gmr.utils import check_random_state
-from gmr import GMM, kmeansplusplus_initialization, covariance_initialization
+from gmr import gmm, kmeansplusplus_initialization, covariance_initialization
 from itertools import cycle
 from sklearn.mixture import BayesianGaussianMixture
 from matplotlib.patches import Ellipse
@@ -52,7 +52,7 @@ def simulation_data(n_demonstrations, n_steps, sigma=0.25, mu=0.5,
     return X
 
 
-class GMM_new:
+class GMM:
     __path: dict
     """Path
 
@@ -97,13 +97,14 @@ class GMM_new:
         X_train = X_train.reshape(n_demonstrations * n_steps, n_task_dims + 1)
 
         random_state = check_random_state(0)
-        n_components = 4
+        # TODO set n_components
+        n_components = 8
         initial_means = kmeansplusplus_initialization(
             X_train, n_components, random_state)
         initial_covs = covariance_initialization(X_train, n_components)
         bgmm = BayesianGaussianMixture(
             n_components=n_components, max_iter=500).fit(X_train)
-        self.gmm = GMM(
+        self.gmm = gmm(
             n_components=n_components,
             priors=bgmm.weights_,
             means=bgmm.means_,
@@ -144,14 +145,15 @@ class GMM_new:
 
             # Add the mean path
             ax.plot3D(self.__gmm_path["x"], self.__gmm_path["y"],
-                      self.__gmm_path["z"], color="red", alpha=1.0)
+                      self.__gmm_path["z"], color="red", alpha=1.0, label="GMM")
             # Mean path
             ax.plot3D(self.__path["x"], self.__path["y"],
-                      self.__path["z"], color="green", alpha=1.0)
+                      self.__path["z"], color="green", alpha=1.0, label="Mean")
             ax.set_title(f"GMM with {len(self.__data)} demonstrations")
             ax.set_xlabel("x")
             ax.set_ylabel("y")
             ax.set_zlabel("z")
+            ax.legend()
 
         elif visualize == "covariance":
             # Plot the covariance matrices
@@ -159,11 +161,15 @@ class GMM_new:
             ax = plt.axes()
             ax.plot(self.__data[:, :, 0].T, self.__data[:,
                     :, 1].T, color="black", alpha=0.25)
+            # Add the mean path
+            ax.plot(self.__gmm_path["x"], self.__gmm_path["y"],
+                    color="red", alpha=1.0, label="GMM")
+            # Mean path
             ax.plot(self.__path["x"], self.__path["y"],
-                    color="blue", alpha=1.0)
+                    color="green", alpha=1.0, label="Mean")
             colors = cycle(["r", "g", "b"])
             for factor in np.linspace(0.5, 4.0, 4):
-                new_gmm = GMM(
+                new_gmm = gmm(
                     n_components=len(self.gmm.means), priors=self.gmm.priors,
                     means=self.gmm.means[:,
                                          1:], covariances=self.gmm.covariances[:, 1:, 1:],
@@ -177,6 +183,7 @@ class GMM_new:
             ax.set_title(f"Covariance matrices")
             ax.set_xlabel("x")
             ax.set_ylabel("y")
+            ax.legend()
 
         elif visualize == "tolerances":
             # Plot the tolerances
@@ -184,16 +191,23 @@ class GMM_new:
             ax = plt.axes()
             ax.plot(self.__data[:, :, 0].T, self.__data[:,
                     :, 1].T, color="black", alpha=0.25)
+            # Add the mean path
+            ax.plot(self.__gmm_path["x"], self.__gmm_path["y"],
+                    color="red", alpha=1.0, label="GMM")
+            # Mean path
             ax.plot(self.__path["x"], self.__path["y"],
-                    color="blue", alpha=1.0)
+                    color="green", alpha=1.0, label="Mean")
+
+            ax.set_title(f"GMM with {len(self.__data)} demonstrations")
             ax.fill_between(
                 self.__path["x"],
                 self.__path["y"] - 1.96 * self.__path["y_std"],
                 self.__path["y"] + 1.96 * self.__path["y_std"],
-                color="green", alpha=0.5)
+                color="blue", alpha=0.5)
             ax.set_title(f"Tolerances")
             ax.set_xlabel("x")
             ax.set_ylabel("y")
+            ax.legend()
 
         # Visualize the plots
         plt.show()
@@ -208,9 +222,9 @@ class GMM_new:
 
 
 if __name__ == "__main__":
-    data = simulation_data(n_demonstrations=10, n_steps=50)
+    data = simulation_data(n_demonstrations=50, n_steps=100)
 
-    GMM_translation = GMM_new(data=data)
+    GMM_translation = GMM(data=data)
     GMM_translation.plot("path")
     GMM_translation.plot("covariance")
     GMM_translation.plot("tolerances")

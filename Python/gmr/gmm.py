@@ -91,7 +91,7 @@ def covariance_initialization(X, n_components):
     return initial_covariances
 
 
-class GMM(object):
+class gmm(object):
     """Gaussian Mixture Model.
 
     Parameters
@@ -472,7 +472,7 @@ class GMM(object):
             self.priors * marginal_norm_factors,
             marginal_prior_exponents[np.newaxis])[0]
 
-        return GMM(n_components=self.n_components, priors=priors, means=means,
+        return gmm(n_components=self.n_components, priors=priors, means=means,
                    covariances=covariances, random_state=self.random_state)
 
     def predict(self, indices, X):
