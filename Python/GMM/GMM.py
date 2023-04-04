@@ -235,5 +235,4 @@ if __name__ == "__main__":
     GMM_translation.plot("tolerances")
     path_translation = GMM_translation.get_path()
 
-
 # https://github.com/AlexanderFabisch/gmr
