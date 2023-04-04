@@ -130,11 +130,11 @@ if __name__ == '__main__':
     axs[0].set_xlabel('t (s)')
     axs[0].set_ylabel('X')
     
-    axs[1].plot(t, demo_p[:, 1] - dmp_p[:, 1], label='Error')
+    axs[1].plot(demo_p[:, 1] - dmp_p[:, 1], label='Error')
     axs[1].set_xlabel('t (s)')
     axs[1].set_ylabel('Y')
 
-    axs[2].plot(t, demo_p[:, 2] - dmp_p[:, 2], label='Error')
+    axs[2].plot(demo_p[:, 2] - dmp_p[:, 2], label='Error')
     axs[2].set_xlabel('t (s)')
     axs[2].set_ylabel('Z')
     axs[2].legend()
