@@ -1,4 +1,3 @@
-import csv
 from gmr.utils import check_random_state
 from gmr import gmm, kmeansplusplus_initialization, covariance_initialization
 from itertools import cycle
@@ -80,7 +79,7 @@ class GMM:
             data (np.array): list of data points. (dimension, steps, demonstrations).
         """
         self.__data = data
-        self.__path: dict = {
+        self.__path_mean: dict = {
             "x": data[:, :, 0].mean(axis=0),
             "y": data[:, :, 1].mean(axis=0),
             "z": data[:, :, 2].mean(axis=0),
@@ -112,20 +111,18 @@ class GMM:
             random_state=random_state)
 
         means_over_time = []
-        y_stds = []
         for step in t:
             conditional_gmm = self.gmm.condition([0], np.array([step]))
             conditional_mvn = conditional_gmm.to_mvn()
             means_over_time.append(conditional_mvn.mean)
-            y_stds.append(np.sqrt(conditional_mvn.covariance[1, 1]))
-            samples = conditional_gmm.sample(100)
-            #plt.scatter(samples[:, 0], samples[:, 1], s=1)
         means_over_time = np.array(means_over_time)
-        y_stds = np.array(y_stds)
-        self.__gmm_path: dict = {
+        self.__path_gmm: dict = {
             "x": means_over_time[:, 0],
             "y": means_over_time[:, 1],
-            "z": means_over_time[:, 2]
+            "z": means_over_time[:, 2],
+            "x_std": data[:, :, 0].std(axis=0),
+            "y_std": data[:, :, 1].std(axis=0),
+            "z_std": data[:, :, 2].std(axis=0)
         }
 
     def plot(self, visualize: str = "path") -> None:
@@ -144,11 +141,11 @@ class GMM:
                           color="black", alpha=0.25)
 
             # Add the mean path
-            ax.plot3D(self.__gmm_path["x"], self.__gmm_path["y"],
-                      self.__gmm_path["z"], color="red", alpha=1.0, label="GMM")
+            ax.plot3D(self.__path_gmm["x"], self.__path_gmm["y"],
+                      self.__path_gmm["z"], color="red", alpha=1.0, label="GMM")
             # Mean path
-            ax.plot3D(self.__path["x"], self.__path["y"],
-                      self.__path["z"], color="green", alpha=1.0, label="Mean")
+            ax.plot3D(self.__path_mean["x"], self.__path_mean["y"],
+                      self.__path_mean["z"], color="green", alpha=1.0, label="Mean")
             ax.set_title(f"GMM with {len(self.__data)} demonstrations")
             ax.set_xlabel("x")
             ax.set_ylabel("y")
@@ -162,10 +159,10 @@ class GMM:
             ax.plot(self.__data[:, :, 0].T, self.__data[:,
                     :, 1].T, color="black", alpha=0.25)
             # Add the mean path
-            ax.plot(self.__gmm_path["x"], self.__gmm_path["y"],
+            ax.plot(self.__path_gmm["x"], self.__path_gmm["y"],
                     color="red", alpha=1.0, label="GMM")
             # Mean path
-            ax.plot(self.__path["x"], self.__path["y"],
+            ax.plot(self.__path_mean["x"], self.__path_mean["y"],
                     color="green", alpha=1.0, label="Mean")
             colors = cycle(["r", "g", "b"])
             for factor in np.linspace(0.5, 4.0, 4):
@@ -192,18 +189,23 @@ class GMM:
             ax.plot(self.__data[:, :, 0].T, self.__data[:,
                     :, 1].T, color="black", alpha=0.25)
             # Add the mean path
-            ax.plot(self.__gmm_path["x"], self.__gmm_path["y"],
+            ax.plot(self.__path_gmm["x"], self.__path_gmm["y"],
                     color="red", alpha=1.0, label="GMM")
             # Mean path
-            ax.plot(self.__path["x"], self.__path["y"],
+            ax.plot(self.__path_mean["x"], self.__path_mean["y"],
                     color="green", alpha=1.0, label="Mean")
 
             ax.set_title(f"GMM with {len(self.__data)} demonstrations")
             ax.fill_between(
-                self.__path["x"],
-                self.__path["y"] - 1.96 * self.__path["y_std"],
-                self.__path["y"] + 1.96 * self.__path["y_std"],
+                self.__path_mean["x"],
+                self.__path_mean["y"] - 1.96 * self.__path_mean["y_std"],
+                self.__path_mean["y"] + 1.96 * self.__path_mean["y_std"],
                 color="blue", alpha=0.5)
+            ax.fill_between(
+                self.__path_gmm["x"],
+                self.__path_gmm["y"] - self.__path_gmm["y_std"],
+                self.__path_gmm["y"] + self.__path_gmm["y_std"],
+                color="green", alpha=0.5)
             ax.set_title(f"Tolerances")
             ax.set_xlabel("x")
             ax.set_ylabel("y")
@@ -212,13 +214,16 @@ class GMM:
         # Visualize the plots
         plt.show()
 
-    def get_path(self) -> dict():
+    def get_path(self, path: str = "GMM") -> dict():
         """Get the found path with the standard deviations matrix for each step
 
         Returns:
             dict(): List of the path, and list of the standard deviations.
         """
-        return self.__path
+        if path == "GMM":
+            return self.__path_gmm
+        elif path == "Mean":
+            return self.__path_mean
 
 
 if __name__ == "__main__":
