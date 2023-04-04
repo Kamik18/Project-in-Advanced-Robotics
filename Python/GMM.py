@@ -1,117 +1,220 @@
+import csv
+from gmr.utils import check_random_state
+from gmr import GMM, kmeansplusplus_initialization, covariance_initialization
+from itertools import cycle
+from sklearn.mixture import BayesianGaussianMixture
+from matplotlib.patches import Ellipse
+import matplotlib.pyplot as plt
+import numpy as np
 
-class GMM:
-    __path: dict = {
-        "path": list(),
-        "covariances": list()
-    }
+
+def simulation_data(n_demonstrations, n_steps, sigma=0.25, mu=0.5,
+                    start=np.zeros(3), goal=np.array([1., 2., 3.]), random_state=0):
+    random_state = np.random.RandomState(random_state)
+
+    X = np.empty((3, n_steps, n_demonstrations))
+
+    # Generate ground-truth for plotting
+    ground_truth = np.empty((3, n_steps))
+    T = np.linspace(-0, 1, n_steps)
+    ground_truth[0] = T
+    ground_truth[1] = (T / 20 + 1 / (sigma * np.sqrt(2 * np.pi)) *
+                       np.exp(-0.5 * ((T - mu) / sigma) ** 2))
+    ground_truth[2] = T
+
+    # Generate trajectories
+    for i in range(n_demonstrations):
+        noisy_sigma = sigma * random_state.normal(1.0, 0.1)
+        noisy_mu = mu * random_state.normal(1.0, 0.1)
+        X[0, :, i] = T
+        X[1, :, i] = T + (1 / (noisy_sigma * np.sqrt(2 * np.pi)) *
+                          np.exp(-0.5 * ((T - noisy_mu) /
+                                         noisy_sigma) ** 2))
+        X[2, :, i] = T + (noisy_sigma * np.sqrt(2 * np.pi) *
+                          np.exp(-0.5 * ((T - noisy_mu) /
+                                         noisy_sigma) ** 2))
+
+    # Spatial alignment
+    current_start = ground_truth[:, 0]
+    current_goal = ground_truth[:, -1]
+    current_amplitude = current_goal - current_start
+    amplitude = goal - start
+    ground_truth = ((ground_truth.T - current_start) * amplitude /
+                    current_amplitude + start).T
+
+    for demo_idx in range(n_demonstrations):
+        current_start = X[:, 0, demo_idx]
+        current_goal = X[:, -1, demo_idx]
+        current_amplitude = current_goal - current_start
+        X[:, :, demo_idx] = ((X[:, :, demo_idx].T - current_start) *
+                             amplitude / current_amplitude + start).T
+    X = X.transpose(2, 1, 0)
+    return X
+
+
+class GMM_new:
+    __path: dict
     """Path
 
     Args:
-        path: List of points or quaternions representing the path.
-        Covariances: List of covariances matrices for each point on the path.
+        path: 'x', 'y', 'z'.
+        Standard deviation: 'x_std', 'y_std', 'z_std'.
     """
 
-    __data_points: list = []
+    __data:  np.array
+    """Data
+    Format: 
+        (dimension, steps, demonstrations)
+    """
+    __gmm_path: dict
+    """GMM path
 
-    def __init__(self, data: list = None) -> None:
+    Args:
+        path: 'x', 'y', 'z'.
+    """
+
+    def __init__(self, data: np.array) -> None:
         """Initialize the dataset
 
         Args:
-            data (list, optional): list of data points, translation: (index, x, y, z) or quaternion (index, a, i, j, k). Defaults to None.
+            data (np.array): list of data points. (dimension, steps, demonstrations).
         """
-        # Convert the received data from string to floats
-        self.__data_points = list(range(len(data)))
-        for row in range(len(self.__data_points)):
-            self.__data_points[row] = [float(i) for i in data[row]]
-    
-    def add_data_points(self, data: list) -> None:
-        """Add data points to the list
+        self.__data = data
+        self.__path: dict = {
+            "x": data[:, :, 0].mean(axis=0),
+            "y": data[:, :, 1].mean(axis=0),
+            "z": data[:, :, 2].mean(axis=0),
+            "x_std": data[:, :, 0].std(axis=0),
+            "y_std": data[:, :, 1].std(axis=0),
+            "z_std": data[:, :, 2].std(axis=0)
+        }
 
-        Args:
-            data (list): list of data points, translation: (index, x, y, z) or quaternion (index, a, i, j, k).
-        """
-        assert (len(self.__data_points) == len(
-            data)),            f"The new data dimension, {len(data)}, is not the same dimensions as the existing data, {len(self.__data_points)}"
+        n_demonstrations, n_steps, n_task_dims = self.__data.shape
+        X_train = np.empty((n_demonstrations, n_steps, n_task_dims + 1))
+        X_train[:, :, 1:] = self.__data
+        t = np.linspace(0, 1, n_steps)
+        X_train[:, :, 0] = t
+        X_train = X_train.reshape(n_demonstrations * n_steps, n_task_dims + 1)
 
-        # Convert the received data from string to floats
-        for row in range(len(self.__data_points)):
-            lst:list = [float(i) for i in data[row]]
-            for instance in lst:
-                self.__data_points[row].append(instance)
+        random_state = check_random_state(0)
+        n_components = 4
+        initial_means = kmeansplusplus_initialization(
+            X_train, n_components, random_state)
+        initial_covs = covariance_initialization(X_train, n_components)
+        bgmm = BayesianGaussianMixture(
+            n_components=n_components, max_iter=500).fit(X_train)
+        self.gmm = GMM(
+            n_components=n_components,
+            priors=bgmm.weights_,
+            means=bgmm.means_,
+            covariances=bgmm.covariances_,
+            random_state=random_state)
 
-    def plot(self) -> None:
-        import matplotlib.pyplot as plt
+        means_over_time = []
+        y_stds = []
+        for step in t:
+            conditional_gmm = self.gmm.condition([0], np.array([step]))
+            conditional_mvn = conditional_gmm.to_mvn()
+            means_over_time.append(conditional_mvn.mean)
+            y_stds.append(np.sqrt(conditional_mvn.covariance[1, 1]))
+            samples = conditional_gmm.sample(100)
+            #plt.scatter(samples[:, 0], samples[:, 1], s=1)
+        means_over_time = np.array(means_over_time)
+        y_stds = np.array(y_stds)
+        self.__gmm_path: dict = {
+            "x": means_over_time[:, 0],
+            "y": means_over_time[:, 1],
+            "z": means_over_time[:, 2]
+        }
 
-        # Data for a three-dimensional line
-        index = self.__data_points[0]
+    def plot(self, visualize: str = "path") -> None:
+        # Plot the data
+        if visualize == "path":
+            fig_paths = plt.figure(figsize=(10, 5))
+            ax = plt.axes(projection="3d")
+            # Add the measurements
+            for i in range(len(self.__data)):
+                set: dict = {
+                    "x": self.__data[i, :, 0],
+                    "y": self.__data[i, :, 1],
+                    "z": self.__data[i, :, 2]
+                }
+                ax.plot3D(set["x"], set["y"], set["z"],
+                          color="black", alpha=0.25)
 
-        prev: int = 0
-        peaks: list = []
-        for i in range(len(index)):
-            if index[i] < prev:
-                peaks.append(i)
-            prev = index[i]
-        peaks.append(len(index))
+            # Add the mean path
+            ax.plot3D(self.__gmm_path["x"], self.__gmm_path["y"],
+                      self.__gmm_path["z"], color="red", alpha=1.0)
+            # Mean path
+            ax.plot3D(self.__path["x"], self.__path["y"],
+                      self.__path["z"], color="green", alpha=1.0)
+            ax.set_title(f"GMM with {len(self.__data)} demonstrations")
+            ax.set_xlabel("x")
+            ax.set_ylabel("y")
+            ax.set_zlabel("z")
 
-        x = self.__data_points[1]
-        y = self.__data_points[2]
-        z = self.__data_points[3]
-        data_sets: list = []
+        elif visualize == "covariance":
+            # Plot the covariance matrices
+            fig_covariances = plt.figure(figsize=(10, 5))
+            ax = plt.axes()
+            ax.plot(self.__data[:, :, 0].T, self.__data[:,
+                    :, 1].T, color="black", alpha=0.25)
+            ax.plot(self.__path["x"], self.__path["y"],
+                    color="blue", alpha=1.0)
+            colors = cycle(["r", "g", "b"])
+            for factor in np.linspace(0.5, 4.0, 4):
+                new_gmm = GMM(
+                    n_components=len(self.gmm.means), priors=self.gmm.priors,
+                    means=self.gmm.means[:,
+                                         1:], covariances=self.gmm.covariances[:, 1:, 1:],
+                    random_state=self.gmm.random_state)
+                for mean, (angle, width, height) in new_gmm.to_ellipses(factor):
+                    ell = Ellipse(xy=mean, width=width, height=height,
+                                  angle=np.degrees(angle))
+                    ell.set_alpha(0.15)
+                    ell.set_color(next(colors))
+                    ax.add_artist(ell)
+            ax.set_title(f"Covariance matrices")
+            ax.set_xlabel("x")
+            ax.set_ylabel("y")
 
-        start: int = 0
-        for peak in peaks:
-            set: dict = {
-                "x": x[start:peak],
-                "y": y[start:peak],
-                "z": z[start:peak]
-            }
-            data_sets.append(set)
-            start = peak
+        elif visualize == "tolerances":
+            # Plot the tolerances
+            fig_tolerances = plt.figure(figsize=(10, 5))
+            ax = plt.axes()
+            ax.plot(self.__data[:, :, 0].T, self.__data[:,
+                    :, 1].T, color="black", alpha=0.25)
+            ax.plot(self.__path["x"], self.__path["y"],
+                    color="blue", alpha=1.0)
+            ax.fill_between(
+                self.__path["x"],
+                self.__path["y"] - 1.96 * self.__path["y_std"],
+                self.__path["y"] + 1.96 * self.__path["y_std"],
+                color="green", alpha=0.5)
+            ax.set_title(f"Tolerances")
+            ax.set_xlabel("x")
+            ax.set_ylabel("y")
 
-        fig = plt.figure()
-        ax = plt.axes(projection="3d")
+        # Visualize the plots
+        plt.show()
 
-        # Plot all the data sets
-        for set in data_sets:
-            ax.plot3D(set["x"], set["y"], set["z"], "blue")
-        
-        # Plot the GMM path
-        if len(self.__path["path"]) > 0:
-            ax.plot3D(self.__path["path"]["x"], self.__path["path"]["y"], self.__path["path"]["z"], "green")
-
-        ax.set_title("GMM")
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.set_zlabel("z")
-        fig.show()
-        plt.pause(0)
-
-
-    def get_path(self) -> tuple():
-        """Get the found path with the covariance matrix for each step
+    def get_path(self) -> dict():
+        """Get the found path with the standard deviations matrix for each step
 
         Returns:
-            tuple(): List of the path, and list of the covariance matrices.
+            dict(): List of the path, and list of the standard deviations.
         """
-        return tuple(self.__path["path"], self.__path["covariances"])
-
-
-def test():
-    print("This is a test")
+        return self.__path
 
 
 if __name__ == "__main__":
-    import csv
+    data = simulation_data(n_demonstrations=10, n_steps=50)
 
-    GMM_data: list = []
-    with open("Matlab\GMM_data.csv") as csv_file:
-        csv_reader = csv.reader(csv_file, delimiter=",")
-        for data in csv_reader:
-            GMM_data.append(data)
+    GMM_translation = GMM_new(data=data)
+    GMM_translation.plot("path")
+    GMM_translation.plot("covariance")
+    GMM_translation.plot("tolerances")
+    path_translation = GMM_translation.get_path()
 
-    test()
 
-    GMM_translation = GMM(data=GMM_data)
-    #GMM_translation.add_data_points(data=GMM_data)
-    GMM_translation.plot()
-    print("Hello")
+# https://github.com/AlexanderFabisch/gmr
