@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
+from pyquaternion import Quaternion
 
 class AdmittanceControl():
     def __init__(self, Kp: float = 10, Kd: float = 20, tr: float = 0.1, sample_time: float = 0.001) -> None:
@@ -83,6 +83,159 @@ class AdmittanceControl():
         # Return the angle, angular velocity, angular acceleration, and compliance frame angle
         return theta_c, self.theta, self.dtheta, self.ddtheta
     
+
+
+class AdmittanceControlQuaternion():
+    def __init__(self, sample_time, kp, kd, tr) -> None:
+      
+        # Initialize the variables
+        self.sample_time: float = sample_time
+       
+        # Set the gains
+        self.kp: np.ndarray = np.diag([kp, kp, kp])
+        self.kd: np.ndarray = np.diag([kd, kd, kd])
+
+        # Calculate the mass matrix gain
+        Natural_freq: float = 1 / tr
+        mdx: float = self.kp[0, 0]/(Natural_freq*Natural_freq)
+        mdy: float = self.kp[1, 1]/(Natural_freq*Natural_freq)
+        mdz: float = self.kp[2, 2]/(Natural_freq*Natural_freq)
+        self.Mp: np.ndarray = np.diag([mdx, mdy, mdz])
+
+        self.q = np.zeros((4), dtype=np.float64)
+        
+        self.q_prev = np.zeros((4), dtype=np.float64)
+        self.q_prev[0] = 1
+
+        self.w: np.ndarray = np.zeros((3), dtype=np.float64)
+        self.dw: np.ndarray = np.zeros((3))
+
+        self.sample_time: float = sample_time
+
+    def Rotation_Quaternion(self, wrench, q_ref) -> tuple:
+    
+        y = self.fcn(self.q, self.kp)
+
+        sum_block = wrench - self.kd.dot(self.w) - y
+
+        self.dw = np.linalg.inv(self.Mp) @ sum_block
+        self.w = self.w + self.dw * self.sample_time
+
+        self.q_prev = self.q
+        self.q = self.w2q(self.w,self.sample_time, self.q)
+    
+        # Add the desired angle to the current angle
+        theta_c = np.zeros((4))
+
+        ref_q = Quaternion(q_ref)
+        qq = Quaternion(self.q)
+        qqq = qq * ref_q
+        theta_c[0] = qqq[0]
+        theta_c[1] = qqq[1]
+        theta_c[2] = qqq[2]
+        theta_c[3] = qqq[3]
+        
+        # Return the angle, angular velocity, angular acceleration, and compliance frame angle
+        return theta_c, self.w, self.dw
+    
+
+    def skew_symmetric_matrix(self,v):
+        
+        aa = float(v[2])
+        bb = float(v[1])
+        cc = float(v[0])
+        yy = np.array([[0, -aa, bb], 
+                       [aa, 0, -cc],
+                       [-bb, cc, 0],
+                       ])
+        return yy
+    
+    def w2q(self, w, T_s, Q_prev):
+        # if Q_pre is 0, then the initial quaternion is [1,0,0,0]
+        if 0 == Q_prev[0] and 0 == Q_prev[1] and 0 == Q_prev[2] and 0 == Q_prev[3]:
+            Q_prev = np.array([1,0,0,0])
+            
+        r = (T_s/2) * w
+        q0 = Quaternion(0, r[0], r[1], r[2])
+        q_new = Quaternion.exp(q0) * Quaternion(Q_prev)
+        y = np.array([q_new.w, q_new.x, q_new.y, q_new.z])
+        
+        return y
+
+    def fcn(self, q, K_0):
+        Eta = q[0]
+        Epsilon = q[1:4]
+        
+        S = np.array([[0, -Epsilon[2], Epsilon[1]],
+                    [Epsilon[2], 0, -Epsilon[0]],
+                    [-Epsilon[1], Epsilon[0], 0]])
+        E = Eta * np.eye(3) - S
+        K = 2 * np.transpose(E) @ K_0
+        y = K @ np.transpose(Epsilon)
+        
+        return y
+
+
+def SimulateQuaternion():
+    
+    time: np.ndarray = np.linspace(0, 30, 30 * 1000 + 1)
+    dt: float = np.gradient(time)[0]
+
+    admittance_control_q = AdmittanceControlQuaternion(sample_time=dt,kp=11.11,kd=4.667, tr=0.1)
+    q_ref = np.array([1, 0, 0, 0])
+
+    temp_p = []
+    temp_dp = []
+    temp_ddp = []
+    
+    # Run the simulation
+    for i in range(len(time)):
+        if (15000 < i < 20000):
+            wrench_ = np.array([1, 0.5, 1])
+        else:
+            wrench_ = np.array([0,0,0])
+        
+        p, dp, ddp = admittance_control_q.Rotation_Quaternion(
+           wrench = wrench_, q_ref=q_ref)
+        temp_p.append(p)
+        temp_dp.append(dp)
+        temp_ddp.append(ddp)
+
+    temp_p = np.array(temp_p)
+    temp_dp = np.array(temp_dp)
+    temp_ddp = np.array(temp_ddp)
+
+    print("temp_p shape ", temp_p.shape)
+    print("temp_dp shape ", temp_dp.shape)
+    print("temp_ddp shape ", temp_ddp.shape)
+
+
+    fig, axs = plt.subplots(3, 1, sharex=True, sharey=False, figsize=(
+        10, 10), constrained_layout=True, dpi=100)
+    fig.suptitle('Admittance Control Oriention', fontsize=16)
+    fig.set_constrained_layout_pads(
+        w_pad=0.1, h_pad=0.1, hspace=0.1, wspace=0.1)
+    axs[0].plot(time, temp_p, label=["x", "y", "z", "w"])
+    axs[0].set_xlabel('t (s)')
+    axs[0].set_ylabel('Quaternion, [rad]')
+    axs[0].legend(loc='upper right', ncol=3, fontsize=8)
+    axs[0].set_title('q')
+    
+    axs[1].plot(time, temp_dp, label=["x", "y", "z"])
+    axs[1].set_xlabel('t (s)')
+    axs[1].set_ylabel('Omega, [rad/s]')
+    axs[1].legend(loc='upper right', ncol=3, fontsize=8)
+    axs[1].set_title('Omega')
+    
+    axs[2].plot(time, temp_ddp, label=["x", "y", "z"])
+    axs[2].set_xlabel('t (s)')
+    axs[2].set_ylabel('DOmega, [rad/s^2]')
+    axs[2].legend(loc='upper right', ncol=3, fontsize=8)
+    axs[2].set_title('omega_dot')
+    plt.show()
+    
+
+
 def create_position_reference(time: np.ndarray) -> np.ndarray:
     """Create a position reference vector
 
@@ -240,6 +393,8 @@ def simulate_rotation(time: np.ndarray, ref_theta: np.ndarray, wrench: np.ndarra
     axs[3].set_title('omega_dot (ddtheta)')
     plt.show()
 
+
+
 if __name__ == "__main__":
     # Time vector
     time: np.ndarray = np.linspace(0, 30, 30 * 1000 + 1)
@@ -253,3 +408,7 @@ if __name__ == "__main__":
     # Run the simulations
     simulate_translation(time=time, ref_p=ref_p, wrench=wrench)
     simulate_rotation(time=time, ref_theta=ref_theta, wrench=wrench)
+
+    SimulateQuaternion()
+
+
