@@ -7,7 +7,6 @@ from spatialmath import SE3
 from spatialmath.base import *
 import spatialgeometry as sg
 from cmath import pi, sqrt
-import copy
 import transforms3d.quaternions as txq
 import matplotlib.pyplot as plt
 from scipy.interpolate import CubicSpline
@@ -76,7 +75,7 @@ def distance_to_point(start_pos, end_pos):
     # Return the distance
     return distance
 
-def makeTraj(start_pos, end_pos, time_vec):
+def makeTraj(start_pos, end_pos, bJoin, start_joint, end_joint, time_vec):
     """
     Args:
     - start_pos (SE3): Transformation matrix with starting position
@@ -85,8 +84,14 @@ def makeTraj(start_pos, end_pos, time_vec):
     Returns:
     - trajectory (Trajectory instance): The return value is an object that contains position, velocity and acceleration data.
     """
-    joint_pos_start = inverse_kinematics(start_pos, Q0)
-    joint_pos_end = inverse_kinematics(end_pos, joint_pos_start)
+
+    if bJoin:
+        joint_pos_start = start_joint
+        joint_pos_end = end_joint
+    else:
+        joint_pos_start = inverse_kinematics(start_pos, Q0)
+        joint_pos_end = inverse_kinematics(end_pos, joint_pos_start)
+    
     return rtb.jtraj(joint_pos_start, joint_pos_end, time_vec)
     # Catersian space doesnt work problerly with the parabolic blend
     c_traj = rtb.ctraj(start_pos, end_pos, time_vec)
@@ -347,6 +352,17 @@ Transform_pos = [
                 [0, 0, 0, 1]]), check=False)
 ]
 
+joint_pos2 = [
+    # Pick up
+    [-1.8650043646441858, -2.177396913568014, -2.0446903705596924, -0.5873119396022339, 1.5898916721343994, -0.6289342085467737],
+    # Start move
+    [-1.8620646635638636, -1.6741415462889613, -1.235834002494812, -1.8776527843871058, 1.5898033380508423, -0.6289666334735315],
+    # Move end
+    [-3.2561469713794153, -1.6647893391051234, -1.233979344367981, -1.8767878017821253, 1.5902070999145508, -0.6289828459369105],
+    # Drop off
+    [-3.2726834456073206, -2.2287875614561976, -1.9077214002609253, -0.6282804769328614, 1.589375615119934, -0.6290066877948206]
+]
+
 # init environtment 
 env = swift.Swift()
 env.launch(realtime=True)
@@ -370,17 +386,52 @@ env.add(UR5)
 joint_pos_start = inverse_kinematics(Transform_pos[1], Q0)
 
 # Caluclate the Robots forward kinematics and place the robot
-UR5.q = [-np.pi/2, 0,0,0,0,0]#joint_pos_start
+UR5.q = joint_pos2[1]#joint_pos_start#[-np.pi/2, 0,0,0,0,0]
 env.step()
-time.sleep(1)
+#time.sleep(1)
 
 # Create time vector
 duration = 2
 time_vec = np.linspace(0,duration, SPS*duration)
 # buttom to start
-traj1 = makeTraj(Transform_pos[1], Transform_pos[0], time_vec)
+t1 = UR5.fkine(joint_pos2[0])
+t2 = UR5.fkine(joint_pos2[1])
+t3 = UR5.fkine(joint_pos2[2])
+t4 = UR5.fkine(joint_pos2[3])
+"""
+print('t2: ', t2)
+print('t4: ', t4)
+tx = SE3(np.array([[0, -1, 0, 0.40],    
+                   [0, 0, 1, 0.1],    
+                   [-1, 0, 0, 0.5185],    
+                   [0, 0, 0, 1]]), check=False)
+print(tx)
+text_y = inverse_kinematics(tx, joint_pos2[1])
+print(text_y)
+mark = sg.Sphere(0.01, pose=t2, color=(0,0,1))
+env.add(mark)
+mark = sg.Sphere(0.01, pose=t4, color=(0,1,0))
+env.add(mark)
+mark = sg.Sphere(0.01, pose=tx, color=(1,0,0))
+env.add(mark)
+test_x = UR5.fkine(text_y)
+print('text_x', test_x)
+mark = sg.Sphere(0.02, pose=test_x, color=(1,0,0))
+env.add(mark)
+env.hold()
+exit(1)
+"""
+bJoint = True
+traj1 = makeTraj(t1,t2,True,joint_pos2[0],joint_pos2[1], time_vec)#traj1 = makeTraj(Transform_pos[1], Transform_pos[0], time_vec)
 # start to finish
-traj2 = makeTraj(Transform_pos[0], Transform_pos[2], time_vec)
+traj2 = makeTraj(t2, t3,True,joint_pos2[1],joint_pos2[2], time_vec)
+#traj3 = makeTraj(t3, t4,True,joint_pos2[2],joint_pos2[3], time_vec)
+traj3 = makeTraj(t3, t4,True,joint_pos2[2],joint_pos2[3], time_vec)
+
+#adddots(traj1, (0.0,0.0,1.0))
+#adddots(traj2, (1.0,0.0,0.0))
+#adddots(traj3, (0.0,1.0,0.0))
+#adddots(traj3, (0.0,0.0,0.0))
 
 """
 for joint_pos in traj1.q:
@@ -397,10 +448,10 @@ for joint_pos in traj2.q:
 blend_duration = 1
 blend1 = blendTraj(traj1, traj2, SPS, blend_duration, False)
 
-traj3 = makeTraj(Transform_pos[2], Transform_pos[3], time_vec)
+#traj3 = makeTraj(Transform_pos[2], Transform_pos[3], time_vec)
 blend2 = blendTraj(traj2, traj3, SPS, blend_duration, False)
 combined_blend = np.concatenate([blend1.q[0:int(2*(len(blend1.q)/3))], blend2.q[int(len(blend2.q)/3):]])
-
+"""
 # Move robot to pick up joint configuration
 for joint_pos in combined_blend:
     q = UR5.fkine(joint_pos)
@@ -410,3 +461,59 @@ for joint_pos in combined_blend:
     env.step()
 
 env.hold()
+"""
+
+#run robot
+from rtde_control import RTDEControlInterface as RTDEControl
+from rtde_receive import RTDEReceiveInterface as RTDEReceive
+
+rtde_c = RTDEControl("192.168.1.131")
+rtde_r = RTDEReceive("192.168.1.131")
+init_q = rtde_r.getActualQ()
+#print('init_q: ', init_q)
+
+print("Starting RTDE test script...")
+# Target in the robot base
+
+new_q = init_q[:]
+new_q[0] += 0.10
+q_start = joint_pos2[1]
+
+VELOCITY = 0.2
+ACCELERATION = 0.1
+BLEND = 0
+
+new_comb = []
+for joint in combined_blend:
+    new_comb.append(np.append(joint,[VELOCITY, ACCELERATION, BLEND]))
+
+# Move asynchronously in joint space to new_q, we specify asynchronous behavior by setting the async parameter to
+# 'True'. Try to set the async parameter to 'False' to observe a default synchronous movement, which cannot be stopped
+# by the stopJ function due to the blocking behaviour.
+rtde_c.moveJ(new_comb, False)
+
+time.sleep(0.2)
+# Stop the movement before it reaches new_q
+rtde_c.stopL(0.5)
+print("Stopped movement")
+rtde_c.stopScript()
+exit(1)
+
+# Target in the Z-Axis of the TCP
+target = rtde_r.getActualTCPPose()
+print("target: " ,target)
+target[2] += 0.10
+
+# Move asynchronously in cartesian space to target, we specify asynchronous behavior by setting the async parameter to
+# 'True'. Try to set the async parameter to 'False' to observe a default synchronous movement, which cannot be stopped
+# by the stopL function due to the blocking behaviour.
+rtde_c.moveL(target, 0.25, 0.5, True)
+time.sleep(0.2)
+# Stop the movement before it reaches target
+rtde_c.stopL(0.5)
+
+# Move back to initial joint configuration
+rtde_c.moveL(init_q)
+
+# Stop the RTDE control script
+rtde_c.stopScript()
