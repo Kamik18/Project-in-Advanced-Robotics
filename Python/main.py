@@ -35,8 +35,8 @@ def slider_torque(val):
     torque_thres = val
 
 def goodbye(name, adjective):
-    rtde_c.speedStop()
-    rtde_c.stopScript()
+    #rtde_c.speedStop()
+    #rtde_c.stopScript()
     print(f"Goodbye {name}. You are {adjective}.")
 
 atexit.register(goodbye, "Kasper", "a hobo")
