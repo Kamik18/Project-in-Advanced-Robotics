@@ -55,10 +55,30 @@ def slider_torque(val):
     global torque_thres
     torque_thres = val
 
-def goodbye(rtde_c:RTDEControl):
-    rtde_c.speedStop()
-    rtde_c.stopScript()
-    print("System terminated succesfully")
+def goodbye(rtde_c:RTDEControl, rtde_r:RTDEReceive, gripper:RobotiqGripper):
+    # Robot
+    try:
+        # Stop the robot controller
+        rtde_c.speedStop()
+        rtde_c.stopScript()
+        rtde_c.disconnect()
+
+        # Disconnect the receiver
+        rtde_r.disconnect()
+    except:
+        print("Robot failed to terminate")
+
+    # Gripper
+    try:
+        position:int = 0 # 0-255 - Low value is open, high value is closed 
+        speed:int = 50 # 0-255
+        force:int = 10 # 0-255
+        gripper.move_and_wait_for_pos(position=position, speed=speed, force=force)
+        gripper.disconnect()
+    except:
+        print("Gripper failed to terminate")
+
+    print("Program terminated")
 
 def initialize_plot():
     # Create the figure and axis
@@ -120,24 +140,14 @@ def initialize_plot():
     return lines_newton, lines_torque
 
 
-    
-def log_info(gripper):
+def Grippper_example():
+    position:int = 0 # 0-255 - Low value is open, high value is closed 
+    speed:int = 50 # 0-255
+    force:int = 10 # 0-255
+    gripper.move_and_wait_for_pos(position=position, speed=speed, force=force)
     print(f"Pos: {str(gripper.get_current_position()): >3}  "
-          f"Open: {gripper.is_open(): <2}  "
-          f"Closed: {gripper.is_closed(): <2}  ")
-
-
-
-def Grippper():
-    gripper = RobotiqGripper()
-    gripper.connect(IP, 63352)
-    log_info(gripper)
-    gripper.activate()
-    # Low value is open, high value is closed (0-255)
-    gripper.move_and_wait_for_pos(60, 255, 10)
-    time.sleep(2)
-    gripper.move_and_wait_for_pos(150, 255, 10)
-    log_info(gripper)
+        f"Open: {gripper.is_open(): <2}  "
+        f"Closed: {gripper.is_closed(): <2}  ")
 
 
 if __name__ == "__main__":
@@ -146,14 +156,12 @@ if __name__ == "__main__":
     rtde_r = RTDEReceive(IP)
 
     # Create a Robotiq gripper
-    gripper = RobotiqGripper(IP, 63352)
-
-    # Read the position of the gripper
-    pos = gripper.getCurrentPosition()
-    print(pos)
+    gripper = RobotiqGripper()
+    gripper.connect(IP, 63352)
+    gripper.activate()
 
     # Add exit handler
-    atexit.register(goodbye, rtde_c)
+    atexit.register(goodbye, rtde_c, rtde_r, gripper)
 
     # Zero Ft sensor
     rtde_c.zeroFtSensor()
