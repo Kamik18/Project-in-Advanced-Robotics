@@ -2,6 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pyquaternion import Quaternion
 
+from rtde_control import RTDEControlInterface as RTDEControl
+from rtde_receive import RTDEReceiveInterface as RTDEReceive
+
 class AdmittanceControl():
     def __init__(self, Kp: float = 10, Kd: float = 20, tr: float = 0.1, sample_time: float = 0.001) -> None:
         """Admittance control of the robot
@@ -45,6 +48,10 @@ class AdmittanceControl():
         Returns:
             tuple: p_c, p, dp, ddp. p_c is the compliance frame position, p is the current position, dp is the current velocity, ddp is the current acceleration
         """
+        # Reshape the input vectors
+        wrench: np.ndarray = np.array(wrench).reshape((3, 1))
+        p_ref: np.ndarray = np.array(p_ref).reshape((3, 1))
+
         # Calculate the inputs
         sum_block: np.ndarray = wrench + \
             (-self.kd @ self.dp) + (-self.kp @ self.p)
@@ -397,18 +404,43 @@ def simulate_rotation(time: np.ndarray, ref_theta: np.ndarray, wrench: np.ndarra
 
 if __name__ == "__main__":
     # Time vector
-    time: np.ndarray = np.linspace(0, 30, 30 * 1000 + 1)
-    dt: float = np.gradient(time)[0]
+    #time: np.ndarray = np.linspace(0, 30, 30 * 1000 + 1)
+    dt: float = 0.001
 
-    # Create the reference trajectory and the wrench vector
-    ref_p: np.ndarray = create_position_reference(time=time)
-    ref_theta: np.ndarray = create_orientation_reference(time=time)
-    wrench: np.ndarray = create_wrench(time=time)
+    # # Create the reference trajectory and the wrench vector
+    # ref_p: np.ndarray = create_position_reference(time=time)
+    # ref_theta: np.ndarray = create_orientation_reference(time=time)
+    # wrench: np.ndarray = create_wrench(time=time)
 
-    # Run the simulations
-    simulate_translation(time=time, ref_p=ref_p, wrench=wrench)
-    simulate_rotation(time=time, ref_theta=ref_theta, wrench=wrench)
+    # # Run the simulations
+    # simulate_translation(time=time, ref_p=ref_p, wrench=wrench)
+    # simulate_rotation(time=time, ref_theta=ref_theta, wrench=wrench)
 
-    SimulateQuaternion()
+    # SimulateQuaternion()
+
+
+    # Simulate the translation
+
+    # admittance_control: AdmittanceControl = AdmittanceControl(
+    #     Kp=10, Kd=20, tr=0.1, sample_time=dt)
+
+    # # Create the lists with unknown size to store the results
+    # rtde_r = RTDEReceive("192.168.1.131")
+    
+    # p_list: np.ndarray = np.array()
+
+    # # Run the simulation
+    # while True:
+        
+    #     force_q = rtde_r.getActualTCPForce()
+    #     force = np.array([force_q[0], force_q[1], force_q[2]])
+    #     ref_p = np.array([0.5, 0.5, 0.5])
+
+    #     p_c,_ ,_, _ = admittance_control.Translation(
+    #         wrench=force, p_ref=ref_p[:, [i]])
+        
+    #     p_list = np.append(p_list, p_c)
+    #     print("pos: ",p_c)
+
 
 
