@@ -7,6 +7,7 @@ from matplotlib.widgets import Button
 from matplotlib.widgets import Slider
 import numpy as np
 import random
+import os
 
 import atexit
 
@@ -131,6 +132,9 @@ if __name__ == "__main__":
     
     # Update the plot continuously with 10 hz
     i = 0
+    duration = 0.5 # Sec
+    freq = 440 # Hz
+    os.system(f"play -nq -t alsa synth {duration} sine {freq}")
     while True:
         t_start = rtde_c.initPeriod()
         
