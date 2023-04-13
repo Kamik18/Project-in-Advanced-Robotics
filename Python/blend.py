@@ -490,7 +490,7 @@ for joint in combined_blend:
 # Move asynchronously in joint space to new_q, we specify asynchronous behavior by setting the async parameter to
 # 'True'. Try to set the async parameter to 'False' to observe a default synchronous movement, which cannot be stopped
 # by the stopJ function due to the blocking behaviour.
-rtde_c.moveJ(new_comb, False)
+rtde_c.moveJ(new_comb, wait=False)
 
 time.sleep(0.2)
 # Stop the movement before it reaches new_q
