@@ -6,7 +6,7 @@ from rtde_control import RTDEControlInterface as RTDEControl
 from rtde_receive import RTDEReceiveInterface as RTDEReceive
 
 class AdmittanceControl():
-    def __init__(self, Kp: float = 10, Kd: float = 20, tr: float = 0.1, sample_time: float = 0.001) -> None:
+    def __init__(self, Kp: float = 10, Kd: float = 25, tr: float = 0.1, sample_time: float = 0.001) -> None:
         """Admittance control of the robot
 
         Args:
@@ -21,9 +21,9 @@ class AdmittanceControl():
 
         # Calculate the mass matrix gain
         Natural_freq: float = 1 / tr
-        mdx: float = self.kp[0, 0]/(Natural_freq*Natural_freq)
-        mdy: float = self.kp[1, 1]/(Natural_freq*Natural_freq)
-        mdz: float = self.kp[2, 2]/(Natural_freq*Natural_freq)
+        mdx: float = Kp/(Natural_freq*Natural_freq)
+        mdy: float = Kp/(Natural_freq*Natural_freq)
+        mdz: float = Kp/(Natural_freq*Natural_freq)
         self.Mp: np.ndarray = np.diag([mdx, mdy, mdz])
 
         # Initial position, velocity and acceleration
@@ -64,7 +64,7 @@ class AdmittanceControl():
         p_c: np.ndarray = self.p + p_ref
 
         # Return the position, velocity, acceleration, and compliance frame position
-        return p_c, self.p, self.dp, self.ddp
+        return list(p_c), list(self.p), list(self.dp), list(self.ddp)
 
     def Rotation_euler(self, wrench: np.ndarray, theta_ref: np.ndarray) -> tuple:
         """Rotation control of the robot in euler angles
@@ -399,7 +399,6 @@ def simulate_rotation(time: np.ndarray, ref_theta: np.ndarray, wrench: np.ndarra
     axs[2].legend(loc='upper right', ncol=3, fontsize=8)
     axs[3].set_title('omega_dot (ddtheta)')
     plt.show()
-
 
 
 if __name__ == "__main__":
