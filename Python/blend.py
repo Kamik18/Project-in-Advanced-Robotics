@@ -10,8 +10,13 @@ from cmath import pi, sqrt
 import transforms3d.quaternions as txq
 import matplotlib.pyplot as plt
 from scipy.interpolate import CubicSpline
+import winsound
+
+from rtde_control import RTDEControlInterface as RTDEControl
+from rtde_receive import RTDEReceiveInterface as RTDEReceive
 
 np.set_printoptions(linewidth=100, threshold=6, precision=6, suppress=True)
+
 
 #####################################################################
 # Definitions
@@ -75,7 +80,8 @@ def distance_to_point(start_pos, end_pos):
     # Return the distance
     return distance
 
-def makeTraj(start_pos, end_pos, bJoin, start_joint, end_joint, time_vec):
+#def makeTraj(start_pos, end_pos, bJoin, start_joint, end_joint, time_vec):
+def makeTraj(start_pos, end_pos, time_vec):
     """
     Args:
     - start_pos (SE3): Transformation matrix with starting position
@@ -85,24 +91,28 @@ def makeTraj(start_pos, end_pos, bJoin, start_joint, end_joint, time_vec):
     - trajectory (Trajectory instance): The return value is an object that contains position, velocity and acceleration data.
     """
 
-    if bJoin:
-        joint_pos_start = start_joint
-        joint_pos_end = end_joint
-    else:
+    if isinstance(start_pos, SE3) and isinstance(end_pos, SE3):
+        print("Cartesian space")
         joint_pos_start = inverse_kinematics(start_pos, Q0)
         joint_pos_end = inverse_kinematics(end_pos, joint_pos_start)
-    
-    return rtb.jtraj(joint_pos_start, joint_pos_end, time_vec)
-    # Catersian space doesnt work problerly with the parabolic blend
-    c_traj = rtb.ctraj(start_pos, end_pos, time_vec)
-    # Calculate the joint positions
-    joint_pos = []
-    joint_pos.append(inverse_kinematics(c_traj[0], Q0))
-    for i in range(len(c_traj)-1):
-        joint_pos.append(inverse_kinematics(c_traj[i+1], joint_pos[i]))
+        return rtb.jtraj(joint_pos_start, joint_pos_end, time_vec)
+        # Catersian space doesnt work problerly with the parabolic blend
+        c_traj = rtb.ctraj(start_pos, end_pos, time_vec)
+        # Calculate the joint positions
+        joint_pos = []
+        joint_pos.append(inverse_kinematics(c_traj[0], Q0))
+        for i in range(len(c_traj)-1):
+            joint_pos.append(inverse_kinematics(c_traj[i+1], joint_pos[i]))
 
-    return trajectory.Trajectory("jtraj", time_vec, np.asarray(joint_pos), istime=True)
-    
+        return trajectory.Trajectory("jtraj", time_vec, np.asarray(joint_pos), istime=True)
+
+    if isinstance(start_pos, list) and isinstance(end_pos, list):
+        joint_pos_start = start_pos
+        joint_pos_end = end_pos
+        return rtb.jtraj(joint_pos_start, joint_pos_end, time_vec)
+
+    print('error in types of start_pos and end_pos')
+    return -1  
     
     
 
@@ -222,6 +232,11 @@ def adddots(traj, colorref=(1.0,0.0,0.0)):
         mark = sg.Sphere(0.01, pose=q, color=colorref)
         env.add(mark)
 
+def moveTraj(traj):
+    for joint_pos in traj.q:
+        UR5.q = joint_pos
+        env.step()
+
 def test():
     # Define two Cartesian space trajectories as lists of positions and orientations
     traj1_pos = [[1, 2, 3], [2, 3, 4], [3, 4, 5]]
@@ -316,51 +331,38 @@ def test3():
 #test3()
 #exit(1)
 
-Joint_pos = [
-        # Start Pos
-        [-np.pi / 2, -np.pi / 2, -np.pi / 2, -np.pi / 2, np.pi / 2, 0] ,
-        # Pick up Pos
-        [-np.pi / 2, -2.082, -2.139, -0.491, np.pi / 2, 0],
-        # Move start
-        [-np.pi / 2, -np.pi / 2, -np.pi / 2, -np.pi / 2, np.pi / 2, 0],
-        # Move end
-        [-2.253, -2.154, -0.808, -1.751, np.pi/2, -0.681],
-        # Drop end
-        [-2.253, -2.426, -1.419, -0.868, np.pi/2, -0.681],
-]
-
 Transform_pos = [
     # Start Transformation:
-    SE3(np.array([[0, -1, 0, 0.1091],    
-                  [0, 0, 1, 0.4869],    
-                  [-1, 0, 0, 0.4319],    
+    SE3(np.array([[0, -1, 0, 0.2876],    
+                  [0, 0, 1, 0.4443],    
+                  [-1, 0, 0, 0.1638],    
                   [0, 0, 0, 1]]), check=False),
     # pick up Transformation:
-    SE3(np.array([[0, -1, 0, 0.1091],    
-                  [0, 0, 1, 0.4869],    
-                  [-1, 0, 0, 0.1],    
+    SE3(np.array([[0, -1, 0, 0.2576],    
+                  [0, 0, 1, 0.3844],    
+                  [-1, 0, 0, 0.469],    
                   [0, 0, 0, 1]]), check=False),
     # move end Transformation:
-    SE3(np.array([[0, -1, 0, 0.5353],    
-                [0, 0, 1, 0.4869],    
-                [-1, 0, 0, 0.4319],    
+    SE3(np.array([[0, -1, 0, 0.5355],    
+                [0, 0, 1, -2269],    
+                [-1, 0, 0, 0.4515],    
                 [0, 0, 0, 1]]), check=False),
     # drop off transformation:
-    SE3(np.array([[0, -1, 0, 0.5353],    
-                [0, 0, 1, 0.4869],    
-                [-1, 0, 0, 0.1],    
+    SE3(np.array([[0, -1, 0, 0.5266],    
+                [0, 0, 1, -0.2173],    
+                [-1, 0, 0, 0.1675],    
                 [0, 0, 0, 1]]), check=False)
 ]
 
-joint_pos2 = [
+joint_pos = [
     # Pick up
-    [-1.8650043646441858, -2.177396913568014, -2.0446903705596924, -0.5873119396022339, 1.5898916721343994, -0.6289342085467737],
+    [0.7866979241371155, -1.2816428703120728, 1.972131077443258, -2.2549549541869105, -1.5587285200702112, 1.2535892724990845],
     # Start move
-    [-1.8620646635638636, -1.6741415462889613, -1.235834002494812, -1.8776527843871058, 1.5898033380508423, -0.6289666334735315],
+    [0.7379084229469299, -1.668586870233053, 1.5848916212665003, -1.552712408160307, -1.547173802052633, 1.2541890144348145],
     # Move end
-    [-3.2561469713794153, -1.6647893391051234, -1.233979344367981, -1.8767878017821253, 1.5902070999145508, -0.6289828459369105],
+    [-0.5928247610675257, -1.3727052968791504, 1.3051970640765589, -1.5188871336034317, -1.5476864019977015, 1.254164695739746],
     # Drop off
-    [-3.2726834456073206, -2.2287875614561976, -1.9077214002609253, -0.6282804769328614, 1.589375615119934, -0.6290066877948206]
+    [-0.5876477400409144, -1.2064689558795472, 1.8478692213641565, -2.192582746545309, -1.5472973028766077, 1.254176378250122]
 ]
 
 # init environtment 
@@ -386,64 +388,30 @@ env.add(UR5)
 joint_pos_start = inverse_kinematics(Transform_pos[1], Q0)
 
 # Caluclate the Robots forward kinematics and place the robot
-UR5.q = joint_pos2[1]#joint_pos_start#[-np.pi/2, 0,0,0,0,0]
+UR5.q = joint_pos[0]#joint_pos_start#[-np.pi/2, 0,0,0,0,0]
 env.step()
 #time.sleep(1)
 
 # Create time vector
 duration = 2
 time_vec = np.linspace(0,duration, SPS*duration)
-# buttom to start
-t1 = UR5.fkine(joint_pos2[0])
-t2 = UR5.fkine(joint_pos2[1])
-t3 = UR5.fkine(joint_pos2[2])
-t4 = UR5.fkine(joint_pos2[3])
-"""
-print('t2: ', t2)
-print('t4: ', t4)
-tx = SE3(np.array([[0, -1, 0, 0.40],    
-                   [0, 0, 1, 0.1],    
-                   [-1, 0, 0, 0.5185],    
-                   [0, 0, 0, 1]]), check=False)
-print(tx)
-text_y = inverse_kinematics(tx, joint_pos2[1])
-print(text_y)
-mark = sg.Sphere(0.01, pose=t2, color=(0,0,1))
-env.add(mark)
-mark = sg.Sphere(0.01, pose=t4, color=(0,1,0))
-env.add(mark)
-mark = sg.Sphere(0.01, pose=tx, color=(1,0,0))
-env.add(mark)
-test_x = UR5.fkine(text_y)
-print('text_x', test_x)
-mark = sg.Sphere(0.02, pose=test_x, color=(1,0,0))
-env.add(mark)
-env.hold()
-exit(1)
-"""
-bJoint = True
-traj1 = makeTraj(t1,t2,True,joint_pos2[0],joint_pos2[1], time_vec)#traj1 = makeTraj(Transform_pos[1], Transform_pos[0], time_vec)
+#traj1 = makeTraj(joint_pos[0], joint_pos[1], time_vec)
+traj1 = makeTraj(Transform_pos[0], Transform_pos[1], time_vec)
+traj2 = makeTraj(Transform_pos[1], Transform_pos[2], time_vec)
+traj3 = makeTraj(Transform_pos[2], Transform_pos[3], time_vec)
 # start to finish
-traj2 = makeTraj(t2, t3,True,joint_pos2[1],joint_pos2[2], time_vec)
-#traj3 = makeTraj(t3, t4,True,joint_pos2[2],joint_pos2[3], time_vec)
-traj3 = makeTraj(t3, t4,True,joint_pos2[2],joint_pos2[3], time_vec)
+#traj2 = makeTraj(joint_pos[1],joint_pos[2], time_vec)
+#traj3 = makeTraj(joint_pos[2],joint_pos[3], time_vec)
 
-#adddots(traj1, (0.0,0.0,1.0))
-#adddots(traj2, (1.0,0.0,0.0))
-#adddots(traj3, (0.0,1.0,0.0))
-#adddots(traj3, (0.0,0.0,0.0))
+adddots(traj1, (0.0,0.0,1.0))
+adddots(traj2, (1.0,0.0,0.0))
+adddots(traj3, (0.0,1.0,0.0))
+moveTraj(traj1)
+moveTraj(traj2)
+moveTraj(traj3)
 
-"""
-for joint_pos in traj1.q:
-    q = UR5.fkine(joint_pos)
-    mark = sg.Sphere(0.01, pose=q, color=(0.0,0.0,1.0))
-    env.add(mark)
+exit(1)
 
-for joint_pos in traj2.q:
-    q = UR5.fkine(joint_pos)
-    mark = sg.Sphere(0.01, pose=q, color=(1.0,0.0,0.0))
-    env.add(mark)
-"""
 # Make blend
 blend_duration = 1
 blend1 = blendTraj(traj1, traj2, SPS, blend_duration, False)
@@ -451,50 +419,56 @@ blend1 = blendTraj(traj1, traj2, SPS, blend_duration, False)
 #traj3 = makeTraj(Transform_pos[2], Transform_pos[3], time_vec)
 blend2 = blendTraj(traj2, traj3, SPS, blend_duration, False)
 combined_blend = np.concatenate([blend1.q[0:int(2*(len(blend1.q)/3))], blend2.q[int(len(blend2.q)/3):]])
-"""
-# Move robot to pick up joint configuration
-for joint_pos in combined_blend:
-    q = UR5.fkine(joint_pos)
-    mark = sg.Sphere(0.01, pose=q, color=(1.0,0.0,0.0))
-    env.add(mark)
-    UR5.q = joint_pos
-    env.step()
 
-env.hold()
-"""
 
+exit(1)
 #run robot
-from rtde_control import RTDEControlInterface as RTDEControl
-from rtde_receive import RTDEReceiveInterface as RTDEReceive
-
 rtde_c = RTDEControl("192.168.1.131")
 rtde_r = RTDEReceive("192.168.1.131")
 init_q = rtde_r.getActualQ()
+
 #print('init_q: ', init_q)
+
+
 
 print("Starting RTDE test script...")
 # Target in the robot base
-
-new_q = init_q[:]
-new_q[0] += 0.10
-q_start = joint_pos2[1]
-
+frequency = 440  # Set Frequency To 2500 Hertz
+duration = 1000  # Set Duration To 1000 ms == 1 second
+winsound.Beep(frequency, duration)
+time.sleep(1)
 VELOCITY = 0.2
 ACCELERATION = 0.1
 BLEND = 0
 
-new_comb = []
-for joint in combined_blend:
-    new_comb.append(np.append(joint,[VELOCITY, ACCELERATION, BLEND]))
-
 # Move asynchronously in joint space to new_q, we specify asynchronous behavior by setting the async parameter to
 # 'True'. Try to set the async parameter to 'False' to observe a default synchronous movement, which cannot be stopped
 # by the stopJ function due to the blocking behaviour.
-#rtde_c.moveJ(new_comb, wait=False)
-rtde_c.servoJ(combined_blend, VELOCITY, ACCELERATION, 4, 0.1, 100)
+#tmp = traj2.q[0]+0.1
+#rtde_c.moveJ(tmp, VELOCITY, ACCELERATION, False)
+rtde_c.moveJ(traj1.q[0], VELOCITY, ACCELERATION, False)
+rtde_c.speedStop()
+time.sleep(1)
+
+for joint in traj1.qd: #combined_blend:
+    print(joint)
+    rtde_c.speedJ(joint, time=0.05)
+    time.sleep(0.05)
+for joint in traj2.qd: #combined_blend:
+    print(joint)
+    rtde_c.speedJ(joint, time=0.05)
+    time.sleep(0.05)
+for joint in traj3.qd: #combined_blend:
+    print(joint)
+    rtde_c.speedJ(joint, time=0.05)
+    time.sleep(0.05)
+    #rtde_c.servoJ(joint, VELOCITY, ACCELERATION, 0.1, 0.1, 100)
+#rtde_c.moveJ(new_comb, False)
+
+rtde_c.speedStop()
 time.sleep(0.2)
 # Stop the movement before it reaches new_q
-rtde_c.stopL(0.5)
+#rtde_c.stopL(0.5)
 print("Stopped movement")
 rtde_c.stopScript()
 exit(1)
