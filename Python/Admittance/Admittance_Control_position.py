@@ -93,14 +93,13 @@ class AdmittanceControl():
 
 
 class AdmittanceControlQuaternion():
-    def __init__(self, sample_time, kp, kd, tr) -> None:
-      
+    def __init__(self, Kp: float = 10, Kd: float = 25, tr: float = 0.1, sample_time: float = 0.001) -> None:      
         # Initialize the variables
         self.sample_time: float = sample_time
        
         # Set the gains
-        self.kp: np.ndarray = np.diag([kp, kp, kp])
-        self.kd: np.ndarray = np.diag([kd, kd, kd])
+        self.kp: np.ndarray = np.diag([Kp, Kp, Kp])
+        self.kd: np.ndarray = np.diag([Kd, Kd, Kd])
 
         # Calculate the mass matrix gain
         Natural_freq: float = 1 / tr
