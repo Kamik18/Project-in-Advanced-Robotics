@@ -11,3 +11,14 @@ def fcn(R, P, tau, f):
     Tau_ext = np.dot(R.T, tau)
     F_ext = -np.dot(R.T, np.dot(S, tau)) + np.dot(R.T, f)
     return F_ext, Tau_ext
+
+
+from ur_kinematics import transformations as tr
+
+# Define the TCP pose in x, y, z, roll, pitch, yaw format (in meters and radians)
+tcp_pose = [0.5, -0.2, 0.3, 0.0, 0.0, 0.0]
+
+# Convert the TCP pose to a transformation matrix
+T_tcp = tr.pose2mat(tcp_pose)
+
+print(T_tcp)
