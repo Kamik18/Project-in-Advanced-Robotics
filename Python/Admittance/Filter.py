@@ -50,7 +50,7 @@ class Filter(object):
 
         # Return the mean of the filtered data
         mean = np.mean(data)
-        if mean == 0:
+        if abs(mean) < 1:
             return 0
 
         # Check if the force and torque is within the threshold
@@ -71,8 +71,8 @@ if __name__ == "__main__":
     import TCP_data
 
     # Filters
-    newton_filters = [Filter(iterations=1, input="NEWTON") for _ in range(3)]
-    torque_filters = [Filter(iterations=1, input="TORQUE") for _ in range(3)]
+    newton_filters = [Filter(iterations=100, input="NEWTON") for _ in range(3)]
+    torque_filters = [Filter(iterations=100, input="TORQUE") for _ in range(3)]
 
     # Recorded data
     tcp_forces = TCP_data.tcp_forces

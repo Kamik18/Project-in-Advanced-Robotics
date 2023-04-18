@@ -14,7 +14,7 @@ import os
 import atexit
 
 
-ACCELERATION:float = 1.0
+ACCELERATION:float = 0.75
 
 IP = "192.168.1.131"
 
@@ -77,7 +77,7 @@ if __name__ == "__main__":
     admittance_control: AdmittanceControl = AdmittanceControl(
         Kp=10, Kd=25, tr=0.3, sample_time=TIME)
     admittance_control_quarternion: AdmittanceControlQuaternion = AdmittanceControlQuaternion(
-        Kp=10, Kd=25, tr=0.3, sample_time=TIME)
+        Kp=5, Kd=3, tr=0.3, sample_time=TIME)
 
     # Update the plot continuously with 10 hz
     i = 0
@@ -86,8 +86,8 @@ if __name__ == "__main__":
     os.system(f"play -nq -t alsa synth {duration} sine {freq}")
 
     # Create the filters for the newton and torque measurements
-    newton_filters = [Filter(iterations=3, input="NEWTON") for _ in range(3)]
-    torque_filters = [Filter(iterations=3, input="TORQUE") for _ in range(3)]
+    newton_filters = [Filter(iterations=1, input="NEWTON") for _ in range(3)]
+    torque_filters = [Filter(iterations=1, input="TORQUE") for _ in range(3)]
 
     # Main loop
     while True:
@@ -108,13 +108,10 @@ if __name__ == "__main__":
         # Find the translational velocity with the and amittance control
         _, p, dp, ddp = admittance_control.Translation(
            wrench=newton_force, p_ref=np.array([0, 0, 0]))
-        
-        # TODO 
-        #_, w, dw = admittance_control_quarternion.Rotation_Quaternion(wrench=torque_force, q_ref=[0, 0, 0])
-        
+        _, w, dw = admittance_control_quarternion.Rotation_Quaternion(wrench=torque_force, q_ref=[1, 0, 0, 0])
            
         # Set the translational velocity of the robot
-        rtde_c.speedL([dp[0], dp[1], dp[2], 0, 0, 0], ACCELERATION, TIME)
+        rtde_c.speedL([dp[0], dp[1], dp[2], w[0], w[1], w[2]], ACCELERATION, TIME)
         
         # Wait for next timestep
         rtde_c.waitPeriod(t_start)
