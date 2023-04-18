@@ -54,11 +54,11 @@ class AdmittanceControl():
 
         # Calculate the inputs
         sum_block: np.ndarray = wrench + \
-            (-self.kd @ self.dp) + (-self.kp @ self.p)
+            (-self.kd @ self.dp) # + (-self.kp @ self.p)
         # Calculate the acceleration, velocity and position
         self.ddp: np.ndarray = np.linalg.inv(self.Mp) @ sum_block
-        self.dp: np.ndarray = self.dp + self.ddp * self.sample_time
-        self.p: np.ndarray = self.p + self.dp * self.sample_time
+        self.dp: np.ndarray = self.dp + (self.ddp * self.sample_time)
+        self.p: np.ndarray = self.p + (self.dp * self.sample_time)
 
         # Add the desired position to the current position
         p_c: np.ndarray = self.p + p_ref
@@ -108,31 +108,23 @@ class AdmittanceControlQuaternion():
         mdz: float = self.kp[2, 2]/(Natural_freq*Natural_freq)
         self.Mp: np.ndarray = np.diag([mdx, mdy, mdz])
 
-        self.q = np.zeros((4), dtype=np.float64)
-        
-        self.q_prev = np.zeros((4), dtype=np.float64)
-        self.q_prev[0] = 1
-
+        self.q: np.ndarray = np.zeros((4), dtype=np.float64)
         self.w: np.ndarray = np.zeros((3), dtype=np.float64)
         self.dw: np.ndarray = np.zeros((3))
 
-        self.sample_time: float = sample_time
-
     def Rotation_Quaternion(self, wrench, q_ref) -> tuple:
-    
         y = self.fcn(self.q, self.kp)
-
-        sum_block = wrench - self.kd.dot(self.w) - y
+        
+        sum_block = wrench - (self.kd @ self.w) # - y
 
         self.dw = np.linalg.inv(self.Mp) @ sum_block
         self.w = self.w + self.dw * self.sample_time
 
-        self.q_prev = self.q
         self.q = self.w2q(self.w,self.sample_time, self.q)
     
         # Add the desired angle to the current angle
         theta_c = np.zeros((4))
-
+        '''
         ref_q = Quaternion(q_ref)
         qq = Quaternion(self.q)
         qqq = qq * ref_q
@@ -140,6 +132,7 @@ class AdmittanceControlQuaternion():
         theta_c[1] = qqq[1]
         theta_c[2] = qqq[2]
         theta_c[3] = qqq[3]
+        '''
         
         # Return the angle, angular velocity, angular acceleration, and compliance frame angle
         return theta_c, self.w, self.dw
