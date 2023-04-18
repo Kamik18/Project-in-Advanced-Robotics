@@ -202,6 +202,36 @@ def update_plot():
     file_force.close()
     file_velocity.close()
 
+def angleAxis_to_RotationMatrix(angle_axis):
+    # Extract the angle and axis from the angle-axis representation
+    angle = np.linalg.norm(angle_axis)
+    axis = angle_axis / angle
+
+    # Calculate the rotation matrix
+    cos_theta = np.cos(angle)
+    sin_theta = np.sin(angle)
+    cross_matrix = np.array([[0, -axis[2], axis[1]], [axis[2], 0, -axis[0]], [-axis[1], axis[0], 0]])
+    rotation_matrix = cos_theta * np.eye(3) + (1 - cos_theta) * np.outer(axis, axis) + sin_theta * cross_matrix
+
+    return rotation_matrix
+
+def wrench_transformation(tcp, tau, f, theta) -> tuple:
+    
+    R = angleAxis_to_RotationMatrix(tcp[3:6])
+
+    P = tcp[0:3] + [0, 0, 0.057]
+    S = np.array([[0, -P[2], P[1]],
+                  [P[2], 0, -P[0]],
+                  [-P[1], P[0], 0]])
+        
+    F_ext = -np.dot(R.T, np.dot(S, tau)) + np.dot(R.T, f)
+    Tau_ext = np.dot(R.T, tau)
+  
+    return np.array(F_ext), np.array(Tau_ext)
+
+
+
+
 if __name__ == "__main__":
 
     filename = 'forces.txt'
@@ -215,11 +245,10 @@ if __name__ == "__main__":
          os.remove(filename_vel)
     with open('velocity.txt', 'w') as f:
         f.write(','.join(map(str, [0,0,0,0,0,0])) + '\n')
-        
 
     # Thread for force plot
     Force_thread = threading.Thread(target=update_plot)
-    Force_thread.start()
+    #Force_thread.start()
     
     
     # Create control and receive interface for the robot
@@ -257,6 +286,7 @@ if __name__ == "__main__":
         Kp=10, Kd=25, tr=1.0, sample_time=TIME)
     admittance_control_quarternion: AdmittanceControlQuaternion = AdmittanceControlQuaternion(
         Kp=2, Kd=9, tr=0.9, sample_time=TIME)
+        #Kp=2, Kd=9, tr=0.9, sample_time=TIME)
     #Kp=5, Kd=2, tr=0.5
     
     # Kd Lower damping -> motion is more smooth
@@ -278,7 +308,8 @@ if __name__ == "__main__":
         
         # Get the current TCP force
         force_tcp = rtde_r.getActualTCPForce()
-        
+        newton, tau = wrench_transformation(tcp=rtde_r.getActualTCPPose(), tau=force_tcp[3:6], f=force_tcp[0:3])
+
         for axis in range(3):
             # Add the newton and torque measurement to the filter
             newton_filters[axis].add_data(force_tcp[axis])
