@@ -215,7 +215,7 @@ def angleAxis_to_RotationMatrix(angle_axis):
 
     return rotation_matrix
 
-def wrench_transformation(tcp, tau, f, theta) -> tuple:
+def wrench_transformation(tcp, tau, f) -> tuple:
     
     R = angleAxis_to_RotationMatrix(tcp[3:6])
 
@@ -320,8 +320,8 @@ if __name__ == "__main__":
         torque_force = np.array([torque_filters[axis].filter() for axis in range(3)]) 
         
         # Find the translational velocity with the and amittance control
-        _, p, dp, ddp = admittance_control.Translation(wrench=newton_force, p_ref=[0, 0, 0])
-        _, w, dw = admittance_control_quarternion.Rotation_Quaternion(wrench=torque_force, q_ref=[1, 0, 0, 0])
+        _, p, dp, ddp = admittance_control.Translation(wrench=newton, p_ref=[0, 0, 0])
+        _, w, dw = admittance_control_quarternion.Rotation_Quaternion(wrench=tau, q_ref=[1, 0, 0, 0])
 
         # Set the translational velocity of the robot
         rtde_c.speedL([dp[0], dp[1], dp[2], w[0], w[1], w[2]], ACCELERATION, TIME)
