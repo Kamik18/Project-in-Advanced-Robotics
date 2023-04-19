@@ -13,13 +13,14 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
+from scipy.spatial.transform import Rotation   
 
 import threading
-
+import sys
 import atexit
+import math
 
-
-ACCELERATION:float = 1.0
+ACCELERATION:float = 2.5
 
 IP = "192.168.1.131"
 
@@ -28,6 +29,7 @@ THREAD:threading.Thread = None
 TIME:float = 0.002
 
 RUNNING: bool = True
+
 
 force_measurement:list = []
 speed_measurement:list = []
@@ -213,12 +215,40 @@ def angleAxis_to_RotationMatrix(angle_axis):
     cross_matrix = np.array([[0, -axis[2], axis[1]], [axis[2], 0, -axis[0]], [-axis[1], axis[0], 0]])
     rotation_matrix = cos_theta * np.eye(3) + (1 - cos_theta) * np.outer(axis, axis) + sin_theta * cross_matrix
 
+    #fake = Rotation.from_rotvec(angle*axis)
+    
     return rotation_matrix
+
+def rotvec_to_R(rotvec):
+    theta = np.linalg.norm(rotvec)
+    if theta < sys.float_info.epsilon:
+        rotational_mat = np.eye(3,dtype=float)
+    else:
+        r = rotvec/theta
+        I = np.eye(3,dtype=float)
+        r_rT = np.array(
+            [[r[0]*r[0], r[0]*r[1], r[0]*r[2]],
+            [r[1]*r[0], r[1]*r[1], r[1]*r[2]],
+            [r[2]*r[0], r[2]*r[1], r[2]*r[2]]])
+        
+        r_cross = np.array([
+            [0, -r[2], r[1]],
+            [r[2], 0, -r[0]],
+            [-r[1], r[0], 0]])
+        
+        rotational_mat = math.cos(theta) * I + (1 - math.cos(theta)) * r_rT + math.sin(theta) * r_cross
+    
+    return rotational_mat
+
 
 def wrench_transformation(tcp, tau, f) -> tuple:
     
     R = angleAxis_to_RotationMatrix(tcp[3:6])
+    #R = np.linalg.inv(R)
 
+    #F  = R @ f
+    #Tau = R @ tau 
+    
     P = tcp[0:3] + [0, 0, 0.057]
     S = np.array([[0, -P[2], P[1]],
                   [P[2], 0, -P[0]],
@@ -226,25 +256,36 @@ def wrench_transformation(tcp, tau, f) -> tuple:
         
     F_ext = -np.dot(R.T, np.dot(S, tau)) + np.dot(R.T, f)
     Tau_ext = np.dot(R.T, tau)
-  
-    return np.array(F_ext), np.array(Tau_ext)
+
+    print("Tau_ext: ", Tau_ext)
+    print("F inpur: ", f)
+
+    print("F_ext: ", F_ext)
+    print("Tau input: ", tau)
+
+    exit()
+    return np.array(f), np.array(Tau_ext)
 
 
 
 
 if __name__ == "__main__":
 
-    filename = 'forces.txt'
+    filename = 'Records/B/forces.txt'
     if os.path.exists(filename):
         os.remove(filename)
-    with open('forces.txt', 'w') as f:
+    with open(filename, 'w') as f:
         f.write(','.join(map(str, [0,0,0,0,0,0])) + '\n')  
 
-    filename_vel = 'velocity.txt'
+    filename_vel = 'Records/B/velocity.txt'
     if os.path.exists(filename_vel):
          os.remove(filename_vel)
-    with open('velocity.txt', 'w') as f:
+    with open(filename_vel, 'w') as f:
         f.write(','.join(map(str, [0,0,0,0,0,0])) + '\n')
+
+    filename_record = 'Records/B/Record_tcp.txt'
+    if os.path.exists(filename_vel):
+         os.remove(filename_vel)
 
     # Thread for force plot
     Force_thread = threading.Thread(target=update_plot)
@@ -259,6 +300,9 @@ if __name__ == "__main__":
         time.sleep(1.0)
         rtde_c = RTDEControl(IP)
         rtde_r = RTDEReceive(IP)
+
+    # Set the payload
+    rtde_c.setPayload(1.39, [0,0,0.057])
 
     # Create a Robotiq gripper
     gripper = None
@@ -278,7 +322,7 @@ if __name__ == "__main__":
     atexit.register(goodbye, rtde_c, rtde_r, gripper)
 
     # Zero Ft sensor
-    rtde_c.zeroFtSensor()
+    #rtde_c.zeroFtSensor()
     time.sleep(0.2)
 
     # Admittance control
@@ -297,42 +341,53 @@ if __name__ == "__main__":
     # but may also make it more susceptible to external disturbances
 
     os.system(f"play -nq -t alsa synth {0.5} sine {440}")
-
+ 
     # Create the filters for the newton and torque measurements
     newton_filters = [Filter(iterations=1, input="NEWTON") for _ in range(3)]
     torque_filters = [Filter(iterations=1, input="TORQUE") for _ in range(3)] 
 
     # Main loop
-    while RUNNING:
+    for i in range(5 * int(1/TIME)):
+    #while RUNNING:
+        #start_time =  time.time()
         t_start = rtde_c.initPeriod()
         
         # Get the current TCP force
         force_tcp = rtde_r.getActualTCPForce()
-        newton, tau = wrench_transformation(tcp=rtde_r.getActualTCPPose(), tau=force_tcp[3:6], f=force_tcp[0:3])
-
         for axis in range(3):
             # Add the newton and torque measurement to the filter
             newton_filters[axis].add_data(force_tcp[axis])
-            torque_filters[axis].add_data(force_tcp[axis+3])
+            torque_filters[axis].add_data(force_tcp[axis + 3])
 
         # Get the filtered measurement
         newton_force = np.array([newton_filters[axis].filter() for axis in range(3)])
         torque_force = np.array([torque_filters[axis].filter() for axis in range(3)]) 
+
+        tcp = rtde_r.getActualTCPPose()
+        #newton, tau = wrench_transformation(tcp, tau=torque_force, f=newton_force)
         
         # Find the translational velocity with the and amittance control
-        _, p, dp, ddp = admittance_control.Translation(wrench=newton, p_ref=[0, 0, 0])
-        _, w, dw = admittance_control_quarternion.Rotation_Quaternion(wrench=tau, q_ref=[1, 0, 0, 0])
-
+        _, p, dp, ddp = admittance_control.Translation(wrench=newton_force, p_ref=[0, 0, 0])
+        _, w, dw = admittance_control_quarternion.Rotation_Quaternion(wrench=torque_force, q_ref=[1, 0, 0, 0])
+        
         # Set the translational velocity of the robot
         rtde_c.speedL([dp[0], dp[1], dp[2], w[0], w[1], w[2]], ACCELERATION, TIME)
         
-        with open('forces.txt', 'a') as f:
+        with open(filename, 'a') as f:
             forces = np.append(newton_force, torque_force)
             f.write(','.join(map(str, forces)) + '\n')
 
-        with open('velocity.txt', 'a') as f:
+        with open(filename_vel, 'a') as f:
             f.write(','.join(map(str, [dp[0][0], dp[1][0], dp[2][0], w[0], w[1], w[2]])) + '\n')
+        
+        with open(filename_record, 'a') as f:
+            f.write(','.join(map(str, tcp)) + '\n')
 
         # Wait for next timestep
         rtde_c.waitPeriod(t_start)
+        
+
+    RUNNING = False
+
+
 
