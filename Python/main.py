@@ -20,7 +20,7 @@ import sys
 import atexit
 import math
 
-ACCELERATION:float = 2.5
+ACCELERATION:float = 150 # 50
 
 IP = "192.168.1.131"
 
@@ -271,19 +271,19 @@ def wrench_transformation(tcp, tau, f) -> tuple:
 
 if __name__ == "__main__":
 
-    filename = 'Records/B/forces.txt'
+    filename = 'Records/TEST/forces.txt'
     if os.path.exists(filename):
         os.remove(filename)
     with open(filename, 'w') as f:
         f.write(','.join(map(str, [0,0,0,0,0,0])) + '\n')  
 
-    filename_vel = 'Records/B/velocity.txt'
+    filename_vel = 'Records/TEST/velocity.txt'
     if os.path.exists(filename_vel):
          os.remove(filename_vel)
     with open(filename_vel, 'w') as f:
         f.write(','.join(map(str, [0,0,0,0,0,0])) + '\n')
 
-    filename_record = 'Records/B/Record_tcp.txt'
+    filename_record = 'Records/TEST/Record_tcp.txt'
     if os.path.exists(filename_vel):
          os.remove(filename_vel)
 
@@ -329,8 +329,7 @@ if __name__ == "__main__":
     admittance_control: AdmittanceControl = AdmittanceControl(
         Kp=10, Kd=25, tr=1.0, sample_time=TIME)
     admittance_control_quarternion: AdmittanceControlQuaternion = AdmittanceControlQuaternion(
-        Kp=2, Kd=9, tr=0.9, sample_time=TIME)
-        #Kp=2, Kd=9, tr=0.9, sample_time=TIME)
+        Kp=0.1, Kd=0.5, tr=0.9, sample_time=TIME)
     #Kp=5, Kd=2, tr=0.5
     
     # Kd Lower damping -> motion is more smooth
@@ -369,7 +368,8 @@ if __name__ == "__main__":
         # Find the translational velocity with the and amittance control
         _, p, dp, ddp = admittance_control.Translation(wrench=newton_force, p_ref=[0, 0, 0])
         _, w, dw = admittance_control_quarternion.Rotation_Quaternion(wrench=torque_force, q_ref=[1, 0, 0, 0])
-        
+        #w = [0, 0, 0]
+
         # Set the translational velocity of the robot
         rtde_c.speedL([dp[0], dp[1], dp[2], w[0], w[1], w[2]], ACCELERATION, TIME)
         
