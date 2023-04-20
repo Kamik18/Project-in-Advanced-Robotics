@@ -22,21 +22,6 @@ class Filter(object):
         Args:
             data (float): Data point
         """
-        # Add the data to the array
-        if self.input == "NEWTON":
-            if abs(data) < 0.0:
-                data = 0
-            else:
-                # Offset the force
-                data = data * 0.35
-
-        elif self.input == "TORQUE":
-            if abs(data) < 0.0:
-                data = 0
-            else:
-                # Offset the torque
-                data = data * 10
-
         # Add the data to the array and remove the oldest data
         self.data = np.append(self.data[1:], data)
 
@@ -48,20 +33,24 @@ class Filter(object):
         """
         data = self.data
 
-        # Return the mean of the filtered data
-        mean = np.mean(data)
-        if abs(mean) < 1:
-            return 0
-
-        # Check if the force and torque is within the threshold
-        res = np.log2(abs(mean)) * mean / 5
-
         # Remove the offset
         if self.input == "NEWTON":
+            factor = 0.4
+            mean = np.mean(data) * factor
+            if abs(mean) < 1:
+                return 0
+
+            # Check if the force and torque is within the threshold
+            res = np.log2(abs(mean)) * mean / 5
             res /= 0.25
         elif self.input == "TORQUE":
-            res /= 10
-
+            factor = 20
+            mean = np.mean(data) * factor
+            if abs(mean) < 1:
+                return 0
+            res = np.log2(abs(mean)) * mean / 5
+            res /= factor
+            
         # Return the result
         return res
 
@@ -71,8 +60,8 @@ if __name__ == "__main__":
     import TCP_data
 
     # Filters
-    newton_filters = [Filter(iterations=100, input="NEWTON") for _ in range(3)]
-    torque_filters = [Filter(iterations=100, input="TORQUE") for _ in range(3)]
+    newton_filters = [Filter(iterations=1, input="NEWTON") for _ in range(3)]
+    torque_filters = [Filter(iterations=1, input="TORQUE") for _ in range(3)]
 
     # Recorded data
     tcp_forces = TCP_data.tcp_forces

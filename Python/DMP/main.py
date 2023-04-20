@@ -7,7 +7,13 @@ from mpl_toolkits.mplot3d import Axes3D
 from pyquaternion import Quaternion
 
 import math
- 
+
+bPLOT = False
+bSaveFiles = True
+
+FileName = 'A_Place'
+sPath = 'Python/DMP/Out/'+ FileName +'.txt'
+
 def euler_from_quaternion(x, y, z, w):
         """
         Convert a quaternion into euler angles (roll, pitch, yaw)
@@ -34,7 +40,9 @@ def euler_from_quaternion(x, y, z, w):
 if __name__ == '__main__':
     
     # Load a demonstration file containing robot positions.
-    demo = np.loadtxt("Python\DMP\demo.dat", delimiter=" ", skiprows=1)
+    #demo = np.loadtxt("Python/DMP/demo.dat", delimiter=" ", skiprows=1)
+    demo = np.loadtxt("Records/A_Pick/Record_tcp.txt", delimiter=",", skiprows=0)
+
 
     tau = 0.002 * len(demo)
     t = np.arange(0, tau, 0.002)
@@ -90,128 +98,133 @@ if __name__ == '__main__':
         result_eulr[n] = euler_from_quaternion(d[0],d[1],d[2],d[3])
 
 
+    if bSaveFiles:
+        # Save the result to a file
+        np.savetxt(sPath, np.hstack((dmp_p, result_eulr)), delimiter=',', fmt='%1.4f')
 
 
 
-    # Position DMP 3D    
-    fig1 = plt.figure(1)
-    fig1.suptitle('Position DMP', fontsize=16)
-    ax = plt.axes(projection='3d')
-    ax.plot3D(demo_p[:, 0], demo_p[:, 1], demo_p[:, 2], label='Demonstration')
-    ax.plot3D(dmp_p[:, 0], dmp_p[:, 1],dmp_p[:, 2], label='DMP')
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    ax.legend()
-    
-    # 2D plot the DMP against the original demonstration X, y, Z dir
-    fig2, axs = plt.subplots(3, 1, sharex=True)
-    fig2.suptitle('Position DMP', fontsize=16)
-    axs[0].plot(t, demo_p[:, 0], label='Demonstration')
-    axs[0].plot(t, dmp_p[:, 0], label='DMP')
-    axs[0].set_xlabel('t (s)')
-    axs[0].set_ylabel('X')
-    
-    axs[1].plot(t, demo_p[:, 1], label='Demonstration')
-    axs[1].plot(t, dmp_p[:, 1], label='DMP')
-    axs[1].set_xlabel('t (s)')
-    axs[1].set_ylabel('Y')
+    if bPLOT:
+        # Position DMP 3D    
+        fig1 = plt.figure(1)
+        fig1.suptitle('Position DMP', fontsize=16)
+        ax = plt.axes(projection='3d')
+        ax.plot3D(demo_p[:, 0], demo_p[:, 1], demo_p[:, 2], label='Demonstration')
+        ax.plot3D(dmp_p[:, 0], dmp_p[:, 1],dmp_p[:, 2], label='DMP')
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Z')
+        ax.legend()
+        
+        
+        # 2D plot the DMP against the original demonstration X, y, Z dir
+        fig2, axs = plt.subplots(3, 1, sharex=True)
+        fig2.suptitle('Position DMP', fontsize=16)
+        axs[0].plot(t, demo_p[:, 0], label='Demonstration')
+        axs[0].plot(t, dmp_p[:, 0], label='DMP')
+        axs[0].set_xlabel('t (s)')
+        axs[0].set_ylabel('X')
+        
+        axs[1].plot(t, demo_p[:, 1], label='Demonstration')
+        axs[1].plot(t, dmp_p[:, 1], label='DMP')
+        axs[1].set_xlabel('t (s)')
+        axs[1].set_ylabel('Y')
 
-    axs[2].plot(t, demo_p[:, 2], label='Demonstration')
-    axs[2].plot(t, dmp_p[:, 2], label='DMP')
-    axs[2].set_xlabel('t (s)')
-    axs[2].set_ylabel('Z')
-    axs[2].legend()
+        axs[2].plot(t, demo_p[:, 2], label='Demonstration')
+        axs[2].plot(t, dmp_p[:, 2], label='DMP')
+        axs[2].set_xlabel('t (s)')
+        axs[2].set_ylabel('Z')
+        axs[2].legend()
 
-    # 2D plot the DMP against the original demonstration X, y, Z dir
-    fig3, axs = plt.subplots(3, 1, sharex=True)
-    fig3.suptitle('Position DMP Error', fontsize=16)
-    axs[0].plot(t, demo_p[:, 0] - dmp_p[:, 0], label='Error')
-    axs[0].set_xlabel('t (s)')
-    axs[0].set_ylabel('X')
-    
-    axs[1].plot(demo_p[:, 1] - dmp_p[:, 1], label='Error')
-    axs[1].set_xlabel('t (s)')
-    axs[1].set_ylabel('Y')
+        # 2D plot the DMP against the original demonstration X, y, Z dir
+        fig3, axs = plt.subplots(3, 1, sharex=True)
+        fig3.suptitle('Position DMP Error', fontsize=16)
+        axs[0].plot(t, demo_p[:, 0] - dmp_p[:, 0], label='Error')
+        axs[0].set_xlabel('t (s)')
+        axs[0].set_ylabel('X')
+        
+        axs[1].plot(demo_p[:, 1] - dmp_p[:, 1], label='Error')
+        axs[1].set_xlabel('t (s)')
+        axs[1].set_ylabel('Y')
 
-    axs[2].plot(demo_p[:, 2] - dmp_p[:, 2], label='Error')
-    axs[2].set_xlabel('t (s)')
-    axs[2].set_ylabel('Z')
-    axs[2].legend()
-
-
-    #------------------------------------------------------------------------------------------#
-
-    # Rotation DMP 3D    
-    fig4 = plt.figure(4)
-    fig4.suptitle('Rotation DMP (Quaternion)', fontsize=16)
-    ax = plt.axes(projection='3d')
-    ax.plot3D(demo_quat_array[:, 1], demo_quat_array[:, 2], demo_quat_array[:, 3], label='Demonstration')
-    ax.plot3D(result_quat_array[:, 1], result_quat_array[:, 2],result_quat_array[:, 3], label='DMP')
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    ax.legend()
+        axs[2].plot(demo_p[:, 2] - dmp_p[:, 2], label='Error')
+        axs[2].set_xlabel('t (s)')
+        axs[2].set_ylabel('Z')
+        axs[2].legend()
 
 
-    # 2D plot the DMP against the original demonstration X, y, Z dir
-    fig5, axs = plt.subplots(4, 1, sharex=True)
-    fig5.suptitle('Rotation DMP (Quaternion) ', fontsize=16)
-    axs[0].plot(t, demo_quat_array[:, 0], label='Demonstration')
-    axs[0].plot(t, result_quat_array[:, 0], label='DMP')
-    axs[0].set_xlabel('t (s)')
-    axs[0].set_ylabel('Real')
-    
-    axs[1].plot(t, demo_quat_array[:, 1], label='Demonstration')
-    axs[1].plot(t, result_quat_array[:, 1], label='DMP')
-    axs[1].set_xlabel('t (s)')
-    axs[1].set_ylabel('Img 1')
+        #------------------------------------------------------------------------------------------#
 
-    axs[2].plot(t, demo_quat_array[:, 2], label='Demonstration')
-    axs[2].plot(t, result_quat_array[:, 2], label='DMP')
-    axs[2].set_xlabel('t (s)')
-    axs[2].set_ylabel('Img 2')
-
-    axs[3].plot(t, demo_quat_array[:, 3], label='Demonstration')
-    axs[3].plot(t, result_quat_array[:,3], label='DMP')
-    axs[3].set_xlabel('t (s)')
-    axs[3].set_ylabel('Img 3')
-    axs[3].legend()
+        # Rotation DMP 3D    
+        fig4 = plt.figure(4)
+        fig4.suptitle('Rotation DMP (Quaternion)', fontsize=16)
+        ax = plt.axes(projection='3d')
+        ax.plot3D(demo_quat_array[:, 1], demo_quat_array[:, 2], demo_quat_array[:, 3], label='Demonstration')
+        ax.plot3D(result_quat_array[:, 1], result_quat_array[:, 2],result_quat_array[:, 3], label='DMP')
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Z')
+        ax.legend()
 
 
+        # 2D plot the DMP against the original demonstration X, y, Z dir
+        fig5, axs = plt.subplots(4, 1, sharex=True)
+        fig5.suptitle('Rotation DMP (Quaternion) ', fontsize=16)
+        axs[0].plot(t, demo_quat_array[:, 0], label='Demonstration')
+        axs[0].plot(t, result_quat_array[:, 0], label='DMP')
+        axs[0].set_xlabel('t (s)')
+        axs[0].set_ylabel('Real')
+        
+        axs[1].plot(t, demo_quat_array[:, 1], label='Demonstration')
+        axs[1].plot(t, result_quat_array[:, 1], label='DMP')
+        axs[1].set_xlabel('t (s)')
+        axs[1].set_ylabel('Img 1')
 
-    fig6, axs = plt.subplots(3, 1, sharex=True)
-    fig6.suptitle('Rotation DMP (Eulr)', fontsize=16)
-    axs[0].plot(t, demo_e[:, 0], label='Demonstration')
-    axs[0].plot(t, result_eulr[:, 0], label='DMP')
-    axs[0].set_xlabel('t (s)')
-    axs[0].set_ylabel('Roll x')
-    
-    axs[1].plot(t, demo_e[:, 1], label='Demonstration')
-    axs[1].plot(t, result_eulr[:, 1], label='DMP')
-    axs[1].set_xlabel('t (s)')
-    axs[1].set_ylabel('Pitch y')
+        axs[2].plot(t, demo_quat_array[:, 2], label='Demonstration')
+        axs[2].plot(t, result_quat_array[:, 2], label='DMP')
+        axs[2].set_xlabel('t (s)')
+        axs[2].set_ylabel('Img 2')
 
-    axs[2].plot(t, demo_e[:, 2], label='Demonstration')
-    axs[2].plot(t, result_eulr[:, 2], label='DMP')
-    axs[2].set_xlabel('t (s)')
-    axs[2].set_ylabel('Yaw z')
-    axs[2].legend()
+        axs[3].plot(t, demo_quat_array[:, 3], label='Demonstration')
+        axs[3].plot(t, result_quat_array[:,3], label='DMP')
+        axs[3].set_xlabel('t (s)')
+        axs[3].set_ylabel('Img 3')
+        axs[3].legend()
 
 
-    fig7, axs = plt.subplots(3, 1, sharex=True)
-    fig7.suptitle('Rotation DMP (Eulr)- Error', fontsize=16)
-    axs[0].plot(t, demo_e[:, 0] - result_eulr[:, 0], label='Error')
-    axs[0].set_xlabel('t (s)')
-    axs[0].set_ylabel('Roll x')
-    
-    axs[1].plot(t, demo_e[:, 1] - result_eulr[:, 1], label='Error')
-    axs[1].set_xlabel('t (s)')
-    axs[1].set_ylabel('Pitch y')
 
-    axs[2].plot(t, demo_e[:, 2] - result_eulr[:, 2], label='Error')
-    axs[2].set_xlabel('t (s)')
-    axs[2].set_ylabel('Yaw z')
-    axs[2].legend()
+        fig6, axs = plt.subplots(3, 1, sharex=True)
+        fig6.suptitle('Rotation DMP (Eulr)', fontsize=16)
+        axs[0].plot(t, demo_e[:, 0], label='Demonstration')
+        axs[0].plot(t, result_eulr[:, 0], label='DMP')
+        axs[0].set_xlabel('t (s)')
+        axs[0].set_ylabel('Roll x')
+        
+        axs[1].plot(t, demo_e[:, 1], label='Demonstration')
+        axs[1].plot(t, result_eulr[:, 1], label='DMP')
+        axs[1].set_xlabel('t (s)')
+        axs[1].set_ylabel('Pitch y')
 
-    plt.show()
+        axs[2].plot(t, demo_e[:, 2], label='Demonstration')
+        axs[2].plot(t, result_eulr[:, 2], label='DMP')
+        axs[2].set_xlabel('t (s)')
+        axs[2].set_ylabel('Yaw z')
+        axs[2].legend()
+
+
+        fig7, axs = plt.subplots(3, 1, sharex=True)
+        fig7.suptitle('Rotation DMP (Eulr)- Error', fontsize=16)
+        axs[0].plot(t, demo_e[:, 0] - result_eulr[:, 0], label='Error')
+        axs[0].set_xlabel('t (s)')
+        axs[0].set_ylabel('Roll x')
+        
+        axs[1].plot(t, demo_e[:, 1] - result_eulr[:, 1], label='Error')
+        axs[1].set_xlabel('t (s)')
+        axs[1].set_ylabel('Pitch y')
+
+        axs[2].plot(t, demo_e[:, 2] - result_eulr[:, 2], label='Error')
+        axs[2].set_xlabel('t (s)')
+        axs[2].set_ylabel('Yaw z')
+        axs[2].legend()
+
+        plt.show()
