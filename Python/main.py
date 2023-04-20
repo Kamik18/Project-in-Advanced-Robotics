@@ -215,8 +215,8 @@ def angleAxis_to_RotationMatrix(angle_axis):
     cross_matrix = np.array([[0, -axis[2], axis[1]], [axis[2], 0, -axis[0]], [-axis[1], axis[0], 0]])
     rotation_matrix = cos_theta * np.eye(3) + (1 - cos_theta) * np.outer(axis, axis) + sin_theta * cross_matrix
 
-    #fake = Rotation.from_rotvec(angle*axis)
-    
+    fake = Rotation.from_rotvec(angle*axis)
+   
     return rotation_matrix
 
 def rotvec_to_R(rotvec):
@@ -322,7 +322,7 @@ if __name__ == "__main__":
     atexit.register(goodbye, rtde_c, rtde_r, gripper)
 
     # Zero Ft sensor
-    #rtde_c.zeroFtSensor()
+    rtde_c.zeroFtSensor()
     time.sleep(0.2)
 
     # Admittance control
@@ -330,14 +330,8 @@ if __name__ == "__main__":
         Kp=10, Kd=25, tr=1.0, sample_time=TIME)
     admittance_control_quarternion: AdmittanceControlQuaternion = AdmittanceControlQuaternion(
         Kp=0.1, Kd=0.5, tr=0.9, sample_time=TIME)
-    #Kp=5, Kd=2, tr=0.5
-    
     # Kd Lower damping -> motion is more smooth
     # Kd higher damping -> motion is more stiff
-
-    #KP Higher stiffness gain matrix will result in a more rigid end-effector that is harder to control,
-    # KP Lower stiffness gain matrix will result in a more flexible end-effector that is easier to control, 
-    # but may also make it more susceptible to external disturbances
 
     os.system(f"play -nq -t alsa synth {0.5} sine {440}")
  
@@ -345,10 +339,19 @@ if __name__ == "__main__":
     newton_filters = [Filter(iterations=1, input="NEWTON") for _ in range(3)]
     torque_filters = [Filter(iterations=1, input="TORQUE") for _ in range(3)] 
 
+    file_data:dict = {
+        "tcp": [],
+        "forces": [],
+        "velocity": []
+    }
+    
     # Main loop
     for i in range(5 * int(1/TIME)):
-    #while RUNNING:
-        #start_time =  time.time()
+        # Detect if robot is operational
+        if(rtde_r.getRobotStatus() != 3):
+            print("Robot is not operational")
+            exit()
+
         t_start = rtde_c.initPeriod()
         
         # Get the current TCP force
@@ -368,26 +371,34 @@ if __name__ == "__main__":
         # Find the translational velocity with the and amittance control
         _, p, dp, ddp = admittance_control.Translation(wrench=newton_force, p_ref=[0, 0, 0])
         _, w, dw = admittance_control_quarternion.Rotation_Quaternion(wrench=torque_force, q_ref=[1, 0, 0, 0])
-        #w = [0, 0, 0]
 
         # Set the translational velocity of the robot
         rtde_c.speedL([dp[0], dp[1], dp[2], w[0], w[1], w[2]], ACCELERATION, TIME)
         
-        with open(filename, 'a') as f:
-            forces = np.append(newton_force, torque_force)
-            f.write(','.join(map(str, forces)) + '\n')
-
-        with open(filename_vel, 'a') as f:
-            f.write(','.join(map(str, [dp[0][0], dp[1][0], dp[2][0], w[0], w[1], w[2]])) + '\n')
-        
-        with open(filename_record, 'a') as f:
-            f.write(','.join(map(str, tcp)) + '\n')
+        # Save the data
+        file_data["tcp"].append(tcp)
+        file_data["forces"].append(np.append(newton_force, torque_force))
+        file_data["velocity"].append([dp[0][0], dp[1][0], dp[2][0], w[0], w[1], w[2]])
 
         # Wait for next timestep
         rtde_c.waitPeriod(t_start)
         
 
     RUNNING = False
+
+    # Save the data to files
+    with open(filename, 'a') as f:
+        for forces in file_data["forces"]:
+            f.write(','.join(map(str, forces)) + '\n')
+
+    with open(filename_vel, 'a') as f:
+        for velocity in file_data["velocity"]:
+            f.write(','.join(map(str, velocity)) + '\n')
+    
+    with open(filename_record, 'a') as f:
+        for tcp in file_data["tcp"]:
+            f.write(','.join(map(str, tcp)) + '\n')
+
 
 
 
