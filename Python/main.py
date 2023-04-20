@@ -346,6 +346,7 @@ if __name__ == "__main__":
     }
     
     # Main loop
+   
     for i in range(5 * int(1/TIME)):
         # Detect if robot is operational
         if(rtde_r.getRobotStatus() != 3):
@@ -376,11 +377,14 @@ if __name__ == "__main__":
         rtde_c.speedL([dp[0], dp[1], dp[2], w[0], w[1], w[2]], ACCELERATION, TIME)
         
         # Save the data
+          
         file_data["tcp"].append(tcp)
         file_data["forces"].append(np.append(newton_force, torque_force))
         file_data["velocity"].append([dp[0][0], dp[1][0], dp[2][0], w[0], w[1], w[2]])
+        
 
         # Wait for next timestep
+        
         rtde_c.waitPeriod(t_start)
         
 
