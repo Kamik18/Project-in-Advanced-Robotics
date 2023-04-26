@@ -20,6 +20,8 @@ import sys
 import atexit
 import math
 
+import uuid
+
 ACCELERATION:float = 150 # 50
 
 IP = "192.168.1.131"
@@ -271,21 +273,7 @@ def wrench_transformation(tcp, tau, f) -> tuple:
 
 if __name__ == "__main__":
 
-    filename = 'Records/TEST/forces.txt'
-    if os.path.exists(filename):
-        os.remove(filename)
-    with open(filename, 'w') as f:
-        f.write(','.join(map(str, [0,0,0,0,0,0])) + '\n')  
-
-    filename_vel = 'Records/TEST/velocity.txt'
-    if os.path.exists(filename_vel):
-         os.remove(filename_vel)
-    with open(filename_vel, 'w') as f:
-        f.write(','.join(map(str, [0,0,0,0,0,0])) + '\n')
-
-    filename_record = 'Records/TEST/Record_tcp.txt'
-    if os.path.exists(filename_vel):
-         os.remove(filename_vel)
+    
 
     # Thread for force plot
     Force_thread = threading.Thread(target=update_plot)
@@ -333,7 +321,7 @@ if __name__ == "__main__":
     # Kd Lower damping -> motion is more smooth
     # Kd higher damping -> motion is more stiff
 
-    os.system(f"play -nq -t alsa synth {0.5} sine {440}")
+    
  
     # Create the filters for the newton and torque measurements
     newton_filters = [Filter(iterations=1, input="NEWTON") for _ in range(3)]
@@ -342,66 +330,114 @@ if __name__ == "__main__":
     file_data:dict = {
         "tcp": [],
         "forces": [],
-        "velocity": []
+        "velocity": [],
+        "joint": []
     }
     
-    # Main loop
-   
-    for i in range(5 * int(1/TIME)):
-        # Detect if robot is operational
-        if(rtde_r.getRobotStatus() != 3):
-            print("Robot is not operational")
-            exit()
+    joint_init =  [-1.5207427183734339, -1.7672444782652796, 2.0703089872943323, -1.8949862919249476, -1.6235335508929651, 0.47969508171081543]
+    #tcp_init = [-0.11393864957703922, 0.4495333526836168, -0.07185608921857356, 1.5553759729297227, -0.45710594525512366, -0.14085995620748915]
 
-        t_start = rtde_c.initPeriod()
-        
-        # Get the current TCP force
-        force_tcp = rtde_r.getActualTCPForce()
-        for axis in range(3):
-            # Add the newton and torque measurement to the filter
-            newton_filters[axis].add_data(force_tcp[axis])
-            torque_filters[axis].add_data(force_tcp[axis + 3])
-
-        # Get the filtered measurement
-        newton_force = np.array([newton_filters[axis].filter() for axis in range(3)])
-        torque_force = np.array([torque_filters[axis].filter() for axis in range(3)]) 
-
-        tcp = rtde_r.getActualTCPPose()
-        #newton, tau = wrench_transformation(tcp, tau=torque_force, f=newton_force)
-        
-        # Find the translational velocity with the and amittance control
-        _, p, dp, ddp = admittance_control.Translation(wrench=newton_force, p_ref=[0, 0, 0])
-        _, w, dw = admittance_control_quarternion.Rotation_Quaternion(wrench=torque_force, q_ref=[1, 0, 0, 0])
-
-        # Set the translational velocity of the robot
-        rtde_c.speedL([dp[0], dp[1], dp[2], w[0], w[1], w[2]], ACCELERATION, TIME)
-        
-        # Save the data
-          
-        file_data["tcp"].append(tcp)
-        file_data["forces"].append(np.append(newton_force, torque_force))
-        file_data["velocity"].append([dp[0][0], dp[1][0], dp[2][0], w[0], w[1], w[2]])
-        
-
-        # Wait for next timestep
-        
-        rtde_c.waitPeriod(t_start)
-        
-
-    RUNNING = False
-
-    # Save the data to files
-    with open(filename, 'a') as f:
-        for forces in file_data["forces"]:
-            f.write(','.join(map(str, forces)) + '\n')
-
-    with open(filename_vel, 'a') as f:
-        for velocity in file_data["velocity"]:
-            f.write(','.join(map(str, velocity)) + '\n')
+    numere  = 0
     
-    with open(filename_record, 'a') as f:
-        for tcp in file_data["tcp"]:
-            f.write(','.join(map(str, tcp)) + '\n')
+    # Main loo
+    for i_run in range(1):  
+        
+        rtde_c.zeroFtSensor()
+        time.sleep(1.0)   
+        os.system(f"play -nq -t alsa synth {0.5} sine {440}") 
+        
+        folder_name = "Records/TEST/"+ str(numere)
+        if not os.path.exists(folder_name):
+            os.makedirs(folder_name)
+
+        
+        filename = folder_name + '/force.txt'
+        if os.path.exists(filename):
+            os.remove(filename)
+        with open(filename, 'w') as f:
+            f.write(','.join(map(str, [0,0,0,0,0,0])) + '\n')  
+
+        filename_vel = folder_name + '/velocity.txt'
+        if os.path.exists(filename_vel):
+            os.remove(filename_vel)
+        with open(filename_vel, 'w') as f:
+            f.write(','.join(map(str, [0,0,0,0,0,0])) + '\n')
+
+        filename_record = folder_name + '/record_tcp.txt'
+        if os.path.exists(filename_vel):
+            os.remove(filename_vel)
+
+        filename_record_j = folder_name + '/record_j.txt'
+        if os.path.exists(filename_record_j):
+            os.remove(filename_record_j)
+
+
+        for i in range(10 * int(1/TIME)):
+            # Detect if robot is operational
+            if(rtde_r.getRobotStatus() != 3):
+                print("Robot is not operational")
+                exit()
+
+            t_start = rtde_c.initPeriod()
+            
+            # Get the current TCP force
+            force_tcp = rtde_r.getActualTCPForce()
+            for axis in range(3):
+                # Add the newton and torque measurement to the filter
+                newton_filters[axis].add_data(force_tcp[axis])
+                torque_filters[axis].add_data(force_tcp[axis + 3])
+
+            # Get the filtered measurement
+            newton_force = np.array([newton_filters[axis].filter() for axis in range(3)])
+            torque_force = np.array([torque_filters[axis].filter() for axis in range(3)]) 
+
+            tcp = rtde_r.getActualTCPPose()
+            joint = rtde_r.getActualQ()
+            #newton, tau = wrench_transformation(tcp, tau=torque_force, f=newton_force)
+            
+            # Find the translational velocity with the and amittance control
+            _, p, dp, ddp = admittance_control.Translation(wrench=newton_force, p_ref=[0, 0, 0])
+            _, w, dw = admittance_control_quarternion.Rotation_Quaternion(wrench=torque_force, q_ref=[1, 0, 0, 0])
+
+            # Set the translational velocity of the robot
+            rtde_c.speedL([dp[0], dp[1], dp[2], w[0], w[1], w[2]], ACCELERATION, TIME)
+            
+            # Save the data            
+            file_data["tcp"].append(tcp)
+            file_data["forces"].append(np.append(newton_force, torque_force))
+            file_data["velocity"].append([dp[0][0], dp[1][0], dp[2][0], w[0], w[1], w[2]])
+            file_data["joint"].append(joint)
+            
+
+            # Wait for next timestep            
+            rtde_c.waitPeriod(t_start)
+            
+
+        RUNNING = False
+
+        # Save the data to files
+        with open(filename, 'a') as f:
+            for forces in file_data["forces"]:
+                f.write(','.join(map(str, forces)) + '\n')
+
+        with open(filename_vel, 'a') as f:
+            for velocity in file_data["velocity"]:
+                f.write(','.join(map(str, velocity)) + '\n')
+        
+        with open(filename_record, 'a') as f:
+            for tcp in file_data["tcp"]:
+                f.write(','.join(map(str, tcp)) + '\n')
+
+        with open(filename_record_j, 'a') as f:
+            for tcp in file_data["joint"]:
+                f.write(','.join(map(str, tcp)) + '\n')
+
+        # clear file_data
+        file_data['tcp'].clear()
+        file_data['joint'].clear()
+        file_data['velocity'].clear()
+        file_data['forces'].clear()
+        os.system(f"play -nq -t alsa synth {0.5} sine {440}") 
 
 
 

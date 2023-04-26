@@ -6,13 +6,24 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from pyquaternion import Quaternion
 
+import roboticstoolbox as rtb
+
+import time
+from scipy.spatial.transform import Rotation as R
+from spatialmath import SE3
+from spatialmath.base import q2r   
+import swift
+import spatialgeometry as sg
 import math
 
-bPLOT = False
-bSaveFiles = True
+
+
+bPLOT = True
+bSaveFiles = False
 
 FileName = 'A_Place'
 sPath = 'Python/DMP/Out/'+ FileName +'.txt'
+DIST_THRESHOLD = 0.1
 
 def euler_from_quaternion(x, y, z, w):
         """
@@ -36,16 +47,94 @@ def euler_from_quaternion(x, y, z, w):
      
         return roll_x, pitch_y, yaw_z # in radians
 
+def quat_to_angle_axis(q):
+    angle_axis = np.empty((len(q),3))
+    for i in range(len(q)-1):
+        r = R.from_quat(q[i])
+        angle_axis[i] = r.as_rotvec()
+
+    return angle_axis
+
+def trans_from_pos_quat(pos_list, quat_list, bList):
+    homgenTransList = []
+    
+    if bList:
+        
+        for i in range(len(quat_list)-1):
+            quat = quat_list[i]
+            pos = pos_list[i]
+            x_0 = q2r(quat)
+            homgenTrans = np.zeros([4,4], dtype='f')
+            homgenTrans[0:3,0:3] = x_0
+            homgenTrans[0:3,3] = pos
+            homgenTrans[3,3] = 1
+            homgenTransList.append(SE3(homgenTrans, check=False))
+
+        return homgenTransList
+    else:
+        quat = quat_list
+        pos = pos_list
+        x_0 = q2r(quat)
+        homgenTrans = np.zeros([4,4], dtype='f')
+        homgenTrans[0:3,0:3] = x_0
+        homgenTrans[0:3,3] = pos
+        homgenTrans[3,3] = 1
+
+        return SE3(homgenTrans, check=False)
+
+def get_q_from_trans(HomgenTrans,UR5,q_init):
+
+    q = np.empty((len(HomgenTrans),6))
+    for i, trans in enumerate(HomgenTrans): 
+        sol = UR5.ikine_LM(trans, q0=q_init)
+        q_init = sol.q
+        q[i] = sol.q
+
+    return q
+
+def distance_to_point(start_pos, end_pos):
+    '''
+    Function to calculate the distance to a point
+    Args:
+    - start_pos(SE3): start position
+    - end_pos(SE3): desired position
+
+    Returns:
+    - distance (int): Euclidian distance between end effector and desired goal position in cartisian space
+    ''' 
+    # Calculate the distance
+    distance = math.sqrt(((start_pos.t[0] - end_pos.t[0]) ** 2) + ((start_pos.t[1] - end_pos.t[1]) ** 2) + ((start_pos.t[2] - end_pos.t[2]) ** 2)).real
+    # Return the distance
+    return distance
+
+def add_marker(TransformationMatrix, color, bSinglePOint=False):
+    if bSinglePOint:
+        marker = sg.Sphere(0.005, pose=TransformationMatrix, color=color)
+        env.add(marker)
+        return
+    else:    
+        for i in TransformationMatrix:
+            marker = sg.Sphere(0.005, pose=i, color=color)
+            env.add(marker)
+
 
 if __name__ == '__main__':
     
-    # Load a demonstration file containing robot positions.
-    #demo = np.loadtxt("Python/DMP/demo.dat", delimiter=" ", skiprows=1)
-    demo = np.loadtxt("Records/A_Pick/Record_tcp.txt", delimiter=",", skiprows=0)
+    #demo = np.loadtxt("Records\Pick_A_1\Record_tcp.txt", delimiter=",", skiprows=0)
+    
+    tuples =[]
+    with open("Records\Pick_A_2\Record_tcp.txt", "r") as f:
+        for i, line in enumerate(f):
+            # Check if the line number is odd
+            if i % 5 == 4:
+                values = tuple(map(float, line.strip()[1:-1].split(',')))
+                tuples.append(values)
 
-
-    tau = 0.002 * len(demo)
-    t = np.arange(0, tau, 0.002)
+    demo = np.array(tuples)
+    print("Demp shape: ", demo.shape)
+    tau = 0.003 * len(demo)
+    t = np.arange(0, tau, 0.003)
+    N = 15 #This will change the shape and size of the movement trajectory
     
     
     demo_p = demo[:, 0:3]
@@ -72,19 +161,20 @@ if __name__ == '__main__':
         demo_quat_array[n] = [d[0],d[1],d[2],d[3]]
 
 
-
-    N = 200  # TODO: Try changing the number of basis functions to see how it affects the output.
-    
+   
     #Position...
     dmp = PositionDMP(n_bfs=N, alpha=48.0)
+    dmp.p0 = (demo_p[0])
+    dmp.gp = (demo_p[len(demo_p)-1])
     dmp.train(demo_p, t, tau)
+    
 
     # Rotation...
     dmp_rotation = RotationDMP(n_bfs=N, alpha=48.0)
     dmp_rotation.train(demo_q, t, tau)
 
 
-    # Generate a new trajectory by executing the DMP system.
+    # Generate a new trajectory by executing the DMP system.  
     dmp_p, dmp_dp, dmp_ddp = dmp.rollout(t, tau)
     dmp_r, dmp_dr, dmp_ddr = dmp_rotation.rollout(t, tau)
     
@@ -98,19 +188,88 @@ if __name__ == '__main__':
         result_eulr[n] = euler_from_quaternion(d[0],d[1],d[2],d[3])
 
 
+    ###################################################
+
+
+
+    env = swift.Swift()
+    env.launch(realtime=True)
+
+    UR5 = rtb.models.UR5() 
+    UR5.base = SE3(0.4,0.3,0)
+    UR5.payload(1.390, [0,0, 0.057])
+    env.add(UR5)
+
+    box = sg.Cuboid([1,1,-0.10], base=SE3(0,-0.05,-0.05), color=[0,0,1])
+    env.add(box)
+
+    homgenTransList =[]
+    homgenTransList = trans_from_pos_quat(demo_p, demo_quat_array, True)  
+   
+
+    q_init = [-np.pi / 2, np.pi / 2, -np.pi / 2, -np.pi / 2, -np.pi , 0]
+    UR5.q = q_init
+    env.step()
+    sol = UR5.ikine_LM(trans_from_pos_quat(demo_p[0],demo_quat_array[0],False),search=True)
+    
+    print("sol: ", sol.q)
+    if not UR5.iscollided(sol.q,box,skip=True):
+        q_init = sol.q
+        UR5.q = sol.q
+        env.step()
+    
+    
+    
+    # Dmo marker
+    
+
+    for trans in homgenTransList:
+        add_marker(trans, [0,1,0])
+        sol = UR5.ikine_LM(trans, q0=q_init)
+        jac= UR5.jacob0(sol.q)
+        # calculate the determinant of the jacobian 
+        det_J = np.linalg.det(jac)
+        if abs(det_J) < 1e-6:
+            print("Singularity")
+        if not UR5.iscollided(sol.q,box):
+            #q_init = sol.q
+            UR5.q = sol.q    
+            env.step()
+        else:
+            sol = UR5.ikine_LM(trans, search=True)
+            print("solss: ", len(sol.q))
+            print("solss: ", len(sol))
+            q_init = sol.q
+            UR5.q = sol.q    
+            env.step()
+
+
+    homgenTransList =[]
+    homgenTransList = trans_from_pos_quat(dmp_p, result_quat_array, True)
+    
+    # dmp trajectory
+    for trans in homgenTransList:
+        add_marker(trans, [1,0,0])
+        sol = UR5.ikine_LM(trans, q0=q_init)
+        q_init = sol.q
+        UR5.q = sol.q
+        env.step()
+        
+    print("Done")
+    env.hold()
+
+
     if bSaveFiles:
         # Save the result to a file
         np.savetxt(sPath, np.hstack((dmp_p, result_eulr)), delimiter=',', fmt='%1.4f')
-
-
 
     if bPLOT:
         # Position DMP 3D    
         fig1 = plt.figure(1)
         fig1.suptitle('Position DMP', fontsize=16)
         ax = plt.axes(projection='3d')
-        ax.plot3D(demo_p[:, 0], demo_p[:, 1], demo_p[:, 2], label='Demonstration')
-        ax.plot3D(dmp_p[:, 0], dmp_p[:, 1],dmp_p[:, 2], label='DMP')
+        ax.plot3D(demo_p[:, 0], demo_p[:, 1], demo_p[:, 2], label='Demonstration', color='red')
+        ax.plot3D(dmp_p[:, 0], dmp_p[:, 1],dmp_p[:, 2], '--', label='DMP', color='blue')
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
         ax.set_zlabel('Z')
@@ -120,47 +279,52 @@ if __name__ == '__main__':
         # 2D plot the DMP against the original demonstration X, y, Z dir
         fig2, axs = plt.subplots(3, 1, sharex=True)
         fig2.suptitle('Position DMP', fontsize=16)
-        axs[0].plot(t, demo_p[:, 0], label='Demonstration')
-        axs[0].plot(t, dmp_p[:, 0], label='DMP')
+        axs[0].plot(t, demo_p[:, 0],label='Demonstration', color='red')
+        axs[0].plot(t, dmp_p[:, 0], '--',  label='DMP', color='blue')
         axs[0].set_xlabel('t (s)')
         axs[0].set_ylabel('X')
-        
-        axs[1].plot(t, demo_p[:, 1], label='Demonstration')
-        axs[1].plot(t, dmp_p[:, 1], label='DMP')
+
+           
+        axs[1].plot(t, demo_p[:, 1], label='Demonstration', color='red')
+        axs[1].plot(t, dmp_p[:, 1],'--', label='DMP', color='blue')
         axs[1].set_xlabel('t (s)')
         axs[1].set_ylabel('Y')
 
-        axs[2].plot(t, demo_p[:, 2], label='Demonstration')
-        axs[2].plot(t, dmp_p[:, 2], label='DMP')
+        axs[2].plot(t, demo_p[:, 2], label='Demonstration', color='red')
+        axs[2].plot(t, dmp_p[:, 2],  '--', label='DMP', color='blue')
         axs[2].set_xlabel('t (s)')
         axs[2].set_ylabel('Z')
         axs[2].legend()
 
-        # 2D plot the DMP against the original demonstration X, y, Z dir
+        # # 2D plot the DMP against the original demonstration X, y, Z dir
         fig3, axs = plt.subplots(3, 1, sharex=True)
-        fig3.suptitle('Position DMP Error', fontsize=16)
-        axs[0].plot(t, demo_p[:, 0] - dmp_p[:, 0], label='Error')
+        fig3.suptitle('Position DMP Velocity', fontsize=16)
+        axs[0].plot(t, dmp_dp[:, 0], label='Velocity', color='blue')
         axs[0].set_xlabel('t (s)')
         axs[0].set_ylabel('X')
         
-        axs[1].plot(demo_p[:, 1] - dmp_p[:, 1], label='Error')
+        axs[1].plot(dmp_dp[:, 1], label='Velocity', color='blue')
         axs[1].set_xlabel('t (s)')
         axs[1].set_ylabel('Y')
 
-        axs[2].plot(demo_p[:, 2] - dmp_p[:, 2], label='Error')
+        axs[2].plot(dmp_dp[:, 2], label='Velocity', color='blue')
         axs[2].set_xlabel('t (s)')
         axs[2].set_ylabel('Z')
         axs[2].legend()
 
 
         #------------------------------------------------------------------------------------------#
+        # PLOT QUATERNION IN 3D
+
+        
+
 
         # Rotation DMP 3D    
         fig4 = plt.figure(4)
         fig4.suptitle('Rotation DMP (Quaternion)', fontsize=16)
         ax = plt.axes(projection='3d')
-        ax.plot3D(demo_quat_array[:, 1], demo_quat_array[:, 2], demo_quat_array[:, 3], label='Demonstration')
-        ax.plot3D(result_quat_array[:, 1], result_quat_array[:, 2],result_quat_array[:, 3], label='DMP')
+        ax.plot3D(demo_quat_array[:, 1], demo_quat_array[:, 2], demo_quat_array[:, 3], label='Demonstration', color='red')
+        ax.plot3D(result_quat_array[:, 1], result_quat_array[:, 2],result_quat_array[:, 3], label='DMP', color='blue')
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
         ax.set_zlabel('Z')
@@ -170,61 +334,61 @@ if __name__ == '__main__':
         # 2D plot the DMP against the original demonstration X, y, Z dir
         fig5, axs = plt.subplots(4, 1, sharex=True)
         fig5.suptitle('Rotation DMP (Quaternion) ', fontsize=16)
-        axs[0].plot(t, demo_quat_array[:, 0], label='Demonstration')
-        axs[0].plot(t, result_quat_array[:, 0], label='DMP')
+        axs[0].plot(t, demo_quat_array[:, 0], label='Demonstration', color='red')
+        axs[0].plot(t, result_quat_array[:, 0], label='DMP', color='blue')
         axs[0].set_xlabel('t (s)')
         axs[0].set_ylabel('Real')
         
-        axs[1].plot(t, demo_quat_array[:, 1], label='Demonstration')
-        axs[1].plot(t, result_quat_array[:, 1], label='DMP')
+        axs[1].plot(t, demo_quat_array[:, 1], label='Demonstration', color='red')
+        axs[1].plot(t, result_quat_array[:, 1], label='DMP', color='blue')
         axs[1].set_xlabel('t (s)')
         axs[1].set_ylabel('Img 1')
 
-        axs[2].plot(t, demo_quat_array[:, 2], label='Demonstration')
-        axs[2].plot(t, result_quat_array[:, 2], label='DMP')
+        axs[2].plot(t, demo_quat_array[:, 2], label='Demonstration', color='red')
+        axs[2].plot(t, result_quat_array[:, 2], label='DMP', color='blue')
         axs[2].set_xlabel('t (s)')
         axs[2].set_ylabel('Img 2')
 
-        axs[3].plot(t, demo_quat_array[:, 3], label='Demonstration')
-        axs[3].plot(t, result_quat_array[:,3], label='DMP')
+        axs[3].plot(t, demo_quat_array[:, 3], label='Demonstration', color='red')
+        axs[3].plot(t, result_quat_array[:,3], label='DMP', color='blue')
         axs[3].set_xlabel('t (s)')
         axs[3].set_ylabel('Img 3')
         axs[3].legend()
 
 
 
-        fig6, axs = plt.subplots(3, 1, sharex=True)
-        fig6.suptitle('Rotation DMP (Eulr)', fontsize=16)
-        axs[0].plot(t, demo_e[:, 0], label='Demonstration')
-        axs[0].plot(t, result_eulr[:, 0], label='DMP')
-        axs[0].set_xlabel('t (s)')
-        axs[0].set_ylabel('Roll x')
+        # fig6, axs = plt.subplots(3, 1, sharex=True)
+        # fig6.suptitle('Rotation DMP (Eulr)', fontsize=16)
+        # axs[0].plot(t, demo_e[:, 0], label='Demonstration')
+        # axs[0].plot(t, result_eulr[:, 0], label='DMP')
+        # axs[0].set_xlabel('t (s)')
+        # axs[0].set_ylabel('Roll x')
         
-        axs[1].plot(t, demo_e[:, 1], label='Demonstration')
-        axs[1].plot(t, result_eulr[:, 1], label='DMP')
-        axs[1].set_xlabel('t (s)')
-        axs[1].set_ylabel('Pitch y')
+        # axs[1].plot(t, demo_e[:, 1], label='Demonstration')
+        # axs[1].plot(t, result_eulr[:, 1], label='DMP')
+        # axs[1].set_xlabel('t (s)')
+        # axs[1].set_ylabel('Pitch y')
 
-        axs[2].plot(t, demo_e[:, 2], label='Demonstration')
-        axs[2].plot(t, result_eulr[:, 2], label='DMP')
-        axs[2].set_xlabel('t (s)')
-        axs[2].set_ylabel('Yaw z')
-        axs[2].legend()
+        # axs[2].plot(t, demo_e[:, 2], label='Demonstration')
+        # axs[2].plot(t, result_eulr[:, 2], label='DMP')
+        # axs[2].set_xlabel('t (s)')
+        # axs[2].set_ylabel('Yaw z')
+        # axs[2].legend()
 
 
-        fig7, axs = plt.subplots(3, 1, sharex=True)
-        fig7.suptitle('Rotation DMP (Eulr)- Error', fontsize=16)
-        axs[0].plot(t, demo_e[:, 0] - result_eulr[:, 0], label='Error')
-        axs[0].set_xlabel('t (s)')
-        axs[0].set_ylabel('Roll x')
+        # fig7, axs = plt.subplots(3, 1, sharex=True)
+        # fig7.suptitle('Rotation DMP (Eulr)- Error', fontsize=16)
+        # axs[0].plot(t, demo_e[:, 0] - result_eulr[:, 0], label='Error')
+        # axs[0].set_xlabel('t (s)')
+        # axs[0].set_ylabel('Roll x')
         
-        axs[1].plot(t, demo_e[:, 1] - result_eulr[:, 1], label='Error')
-        axs[1].set_xlabel('t (s)')
-        axs[1].set_ylabel('Pitch y')
+        # axs[1].plot(t, demo_e[:, 1] - result_eulr[:, 1], label='Error')
+        # axs[1].set_xlabel('t (s)')
+        # axs[1].set_ylabel('Pitch y')
 
-        axs[2].plot(t, demo_e[:, 2] - result_eulr[:, 2], label='Error')
-        axs[2].set_xlabel('t (s)')
-        axs[2].set_ylabel('Yaw z')
-        axs[2].legend()
+        # axs[2].plot(t, demo_e[:, 2] - result_eulr[:, 2], label='Error')
+        # axs[2].set_xlabel('t (s)')
+        # axs[2].set_ylabel('Yaw z')
+        # axs[2].legend()
 
         plt.show()
