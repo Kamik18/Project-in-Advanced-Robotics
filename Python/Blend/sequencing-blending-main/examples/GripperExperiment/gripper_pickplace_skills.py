@@ -12,8 +12,8 @@ device = prepare_torch()
 def get_pickplace_parameters():
     pick_ori = [-1.0, 0.0]
     place_ori = [0.0, -1.0]
-    pick_goal = np.array([0.2876, 0.4443, 0.1638])#np.array([-8.5, 2.5])
-    place_goal = np.array([0.5266, -0.2173, 0.1675])#np.array([0.0, -9.5])
+    pick_goal = np.array([-8.5, 2.5])
+    place_goal = np.array([0.0, -9.5])
 
     return pick_goal, place_goal, pick_ori, place_ori
 
@@ -33,7 +33,7 @@ def create_ds_skill(clf_file, reg_file, qtarget, goal, speed=0.01):
     clfds.load_models(clf_file=clf_file, reg_file=reg_file)
 
     def ds_skill(x):
-        x = x[:2]
+        x = x[:3]
         d_x = clfds.reg_model.forward(torch.from_numpy(x- goal).to(device))
         d_x = d_x.detach().cpu().numpy()
         x = x + speed * d_x

@@ -112,9 +112,7 @@ def makeTraj(start_pos, end_pos, time_vec):
         return rtb.jtraj(joint_pos_start, joint_pos_end, time_vec)
 
     print('error in types of start_pos and end_pos')
-    return -1  
-    
-    
+    return -1    
 
 def blendTraj(traj1, traj2, step_pr_sec, duration, printpath=False):
     """
@@ -383,6 +381,7 @@ for joint_pos in t1.q:
 
 # load robot 
 UR5 = rtb.models.UR5()
+UR5.payload(1.385, [0,0,0.15])
 env.add(UR5)
 # ik_lm_wampler is the chosen inverse kinematic function used. First part of returned values are the q_values
 joint_pos_start = inverse_kinematics(Transform_pos[1], Q0)
