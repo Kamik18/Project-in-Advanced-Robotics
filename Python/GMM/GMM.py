@@ -48,9 +48,15 @@ def simulation_data(n_demonstrations, n_steps, sigma=0.25, mu=0.5,
         X[:, :, demo_idx] = ((X[:, :, demo_idx].T - current_start) *
                              amplitude / current_amplitude + start).T
     X = X.transpose(2, 1, 0)
+
+    new_X = np.empty((n_demonstrations, n_steps, 6))
+    new_X[:, :, 0:3] = X
+    new_X[:, :, 3:6] = X
+    X = new_X
     return X
 
-def fetch_data_from_records(path:str, skip_size:int= 5) -> np.ndarray:
+
+def fetch_data_from_records(path: str, skip_size: int = 5) -> np.ndarray:
     """Fetch the demonstration data from the records
 
     Args:
@@ -65,33 +71,53 @@ def fetch_data_from_records(path:str, skip_size:int= 5) -> np.ndarray:
     import numpy as np
 
     # Fetch the files
-    files:list = glob(pathname=path, recursive = True)
-            
+    files: list = glob(pathname=path, recursive=True)
+
     # List of demonstrations
-    demonstrations:list = []
+    demonstrations: list = []
 
     # Iterate the files
     for file in files:
         # Open the file and read the data line by line
-        with open(file, "r") as f:
+        with open(file, "r", encoding="utf-8") as f:
             # Read the data
-            data:list = f.readlines()
-            
+            data: list = f.readlines()
+
+            # Skip every n-th data point
+            data: list = data[::skip_size]
+            max_delta: float = 0
+
             # Iterate the data
             for i in range(len(data)):
                 # Split the data and convert to float
                 data[i] = data[i].split(",")
                 data[i] = [float(x) for x in data[i]]
+                if len(data[i]) != 6:
+                    print(f"Error: {file}, line: {i}")
+                    continue
+                
+                if i > 0:
+                    for j in range(3, 6):
+                        if abs(data[i][j] - data[i-1][j]) > 5:
+                            if (data[i][j] - data[i-1][j]) > np.pi:
+                                data[i][j] -= 2*np.pi
+                            elif (data[i][j] - data[i-1][j]) < -np.pi:
+                                data[i][j] += 2*np.pi
+
+                        delta = abs(data[i][j] - data[i-1][j])
+                        if delta > max_delta:
+                            max_delta = delta
+
+            if max_delta > np.pi:
+                print(f"Error: {file}, max delta: {max_delta}")
+                continue
 
             # Append the data to a list for all the demonstrations
             demonstrations.append(data)
 
-    # Only keep every 5th data point
-    for i in range(len(demonstrations)):
-        demonstrations[i] = demonstrations[i][::skip_size]
-
     # Copy the data from the demonstrations to ndarray
-    X:np.ndarray = np.empty((len(demonstrations), len(demonstrations[0]), len(demonstrations[0][0])))
+    X: np.ndarray = np.empty((len(demonstrations), len(
+        demonstrations[0]), len(demonstrations[0][0])))
     for i in range(len(demonstrations)):
         for j in range(len(demonstrations[i])):
             for k in range(len(demonstrations[i][j])):
@@ -99,6 +125,7 @@ def fetch_data_from_records(path:str, skip_size:int= 5) -> np.ndarray:
 
     # Return the data
     return X
+
 
 class GMM:
     __data:  np.array
@@ -110,14 +137,15 @@ class GMM:
     """GMM path
     """
 
-    def __init__(self, data: np.array) -> None:
+    def __init__(self, data: np.array, n_components:int = 8) -> None:
         """Initialize the dataset
 
         Args:
             data (np.array): list of data points. (dimension, steps, demonstrations).
+            n_components (int): Number of components in the GMM.
         """
         self.__data = data
-        
+
         n_demonstrations, n_steps, n_task_dims = self.__data.shape
         X_train = np.empty((n_demonstrations, n_steps, n_task_dims + 1))
         X_train[:, :, 1:] = self.__data
@@ -126,8 +154,6 @@ class GMM:
         X_train = X_train.reshape(n_demonstrations * n_steps, n_task_dims + 1)
 
         random_state = check_random_state(0)
-        # TODO set n_components
-        n_components = 8
         initial_means = kmeansplusplus_initialization(
             X_train, n_components, random_state)
         initial_covs = covariance_initialization(X_train, n_components)
@@ -145,8 +171,7 @@ class GMM:
             conditional_gmm = self.gmm.condition([0], np.array([step]))
             conditional_mvn = conditional_gmm.to_mvn()
             means_over_time.append(conditional_mvn.mean)
-        self.__gmm_path:np.ndarray = np.array(means_over_time)
-    
+        self.__gmm_path: np.ndarray = np.array(means_over_time)
 
     def plot(self, visualize: str = "path") -> None:
         path_gmm: dict = {
@@ -166,11 +191,12 @@ class GMM:
             "y_std": data[:, :, 1].std(axis=0),
             "z_std": data[:, :, 2].std(axis=0)
         }
-        
+
         # Plot the data
         if visualize == "path":
             fig_paths = plt.figure(figsize=(10, 5))
             ax = plt.axes(projection="3d")
+            
             # Add the measurements
             for i in range(len(self.__data)):
                 set: dict = {
@@ -180,7 +206,7 @@ class GMM:
                 }
                 ax.plot3D(set["x"], set["y"], set["z"],
                           color="black", alpha=0.25)
-            
+
             # Add the GMM path
             ax.plot3D(path_gmm["x"], path_gmm["y"],
                       path_gmm["z"], color="red", alpha=1.0, label="GMM")
@@ -198,18 +224,22 @@ class GMM:
             # Add space between the subplots
             fig.subplots_adjust(wspace=0.5, hspace=0.5)
             # Create title
-            fig.suptitle(f"GMM {len(self.__data)} demonstrations", fontsize=16, ha="center", va="top", color="black", fontweight="bold", fontfamily="sans-serif")
+            fig.suptitle(f"GMM {len(self.__data)} demonstrations", fontsize=16, ha="center",
+                         va="top", color="black", fontweight="bold", fontfamily="sans-serif")
 
             # Create 6 subplots
-            axs:list = [plt.subplot(2, 3, i+1) for i in range(6)]
-            axs_ylabels:list = ["x [m]", "y [m]", "z [m]", "x [rad]", "y [rad]", "z [rad]"]
+            axs: list = [plt.subplot(2, 3, i+1) for i in range(6)]
+            axs_ylabels: list = ["x [m]", "y [m]",
+                                 "z [m]", "x [rad]", "y [rad]", "z [rad]"]
 
             # Plot the degrees of freedom for each axis over time
             for i in range(len(axs)):
-                axs[i].plot(self.__gmm_path[:, i], color="red", alpha=1.0, label="GMM")
-                axs[i].plot(self.__data[:, :, i].mean(axis=0), color="green", alpha=1.0, label="Mean")
+                axs[i].plot(self.__gmm_path[:, i], color="red",
+                            alpha=1.0, label="GMM")
+                axs[i].plot(self.__data[:, :, i].mean(axis=0),
+                            color="green", alpha=1.0, label="Mean")
                 axs[i].plot(self.__data[:, :, i].T, color="black", alpha=0.25)
-                
+
                 axs[i].set_xlabel("Time [ms]")
                 axs[i].set_ylabel(axs_ylabels[i])
                 axs[i].legend()
@@ -218,6 +248,7 @@ class GMM:
             # Plot the covariance matrices
             fig_covariances = plt.figure(figsize=(10, 5))
             ax = plt.axes()
+            ax.set_aspect("equal", "box")
             ax.plot(self.__data[:, :, 0].T, self.__data[:,
                     :, 1].T, color="black", alpha=0.25)
             # Add the GMM path
@@ -230,8 +261,7 @@ class GMM:
             for factor in np.linspace(0.5, 4.0, 4):
                 new_gmm = gmm(
                     n_components=len(self.gmm.means), priors=self.gmm.priors,
-                    means=self.gmm.means[:,
-                                         1:], covariances=self.gmm.covariances[:, 1:, 1:],
+                    means=self.gmm.means[:,1:], covariances=self.gmm.covariances[:, 1:, 1:],
                     random_state=self.gmm.random_state)
                 for mean, (angle, width, height) in new_gmm.to_ellipses(factor):
                     ell = Ellipse(xy=mean, width=width, height=height,
@@ -240,14 +270,14 @@ class GMM:
                     ell.set_color(next(colors))
                     ax.add_artist(ell)
             ax.set_title(f"Covariance matrices")
-            ax.set_xlabel("x")
-            ax.set_ylabel("y")
+            ax.set_xlabel("x [m]")
+            ax.set_ylabel("z [m]")
             ax.legend(loc="upper right")
-
         elif visualize == "tolerances":
             # Plot the tolerances
             fig_tolerances = plt.figure(figsize=(10, 5))
             ax = plt.axes()
+            ax.set_aspect("equal", "box")
             ax.plot(self.__data[:, :, 0].T, self.__data[:,
                     :, 1].T, color="black", alpha=0.25)
             # Add the mean path
@@ -269,8 +299,8 @@ class GMM:
                 path_gmm["y"] + path_gmm["y_std"],
                 color="green", alpha=0.5)
             ax.set_title(f"Tolerances")
-            ax.set_xlabel("x")
-            ax.set_ylabel("y")
+            ax.set_xlabel("x [m]")
+            ax.set_ylabel("z [m]")
             ax.legend()
 
         # Visualize the plots
@@ -286,7 +316,7 @@ class GMM:
             return self.__gmm_path
         elif path == "Mean":
             # Create the mean path
-            mean:np.ndarray = np.zeros(self.__data.shape)
+            mean: np.ndarray = np.zeros(self.__data.shape)
 
             # Mean each degree of freedom
             for axis in range(self.__data.shape[2]):
@@ -296,17 +326,24 @@ class GMM:
 
 
 if __name__ == "__main__":
-    #data:np.ndarray = simulation_data(n_demonstrations=50, n_steps=100)
+    #data:np.ndarray = simulation_data(n_demonstrations=20, n_steps=150)
 
-    data:np.ndarray = fetch_data_from_records(path="./Records/Down_B/**/Record_tcp.txt", skip_size=5)
+    data: np.ndarray = fetch_data_from_records(path="./Records/Up_A/**/Record_tcp.txt", skip_size=10) # From up to down
+    #data: np.ndarray = fetch_data_from_records(path="./Records/Down_A/**/Record_tcp.txt", skip_size=10)
+    #data: np.ndarray = fetch_data_from_records(path="./Records/Up_B/**/Record_tcp.txt", skip_size=10)
+    #data: np.ndarray = fetch_data_from_records(path="./Records/Down_B/**/Record_tcp.txt", skip_size=10)
     print(data.shape)
-    
-    GMM_translation = GMM(data=data)
-    #GMM_translation.plot("path")
-    GMM_translation.plot("path2d")
+
+    """ Plot the covariance and the tolerances
+    temp_data = data[:, :, 1] # Store the x axis
+    data[:, :, 1] = data[:, :, 2] # Swap x and z axis 
+    data[:, :, 2] = temp_data    
+    """
+
+    GMM_translation: GMM = GMM(data=data, n_components= 4)
+    GMM_translation.plot("path")
+    #GMM_translation.plot("path2d")
     #GMM_translation.plot("covariance")
     #GMM_translation.plot("tolerances")
-    path_translation:np.ndarray = GMM_translation.get_path()
-    exit()
+    path_translation: np.ndarray = GMM_translation.get_path()
 
-# https://github.com/AlexanderFabisch/gmr
