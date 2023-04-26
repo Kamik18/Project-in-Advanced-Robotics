@@ -4,13 +4,13 @@ import sys
 from optparse import OptionParser
 from torch.utils.data import DataLoader
 
-from examples.GripperExperiment.gripper_experiment_classes import Gripper2DExp
-from examples.GripperExperiment.gripper_pickplace_skills import *
-from SkillsSequencing.skills.skill_classes import *
+from gripper_experiment_classes import Gripper3DExp
+from gripper_pickplace_skills import *
+from SkillsSequencing.skills.skill_classes3d import *
 from SkillsSequencing.qpnet.constraints import TaskSpaceVariableConstraint
 from SkillsSequencing.qpnet import qpnet_policies as policy_classes
 from SkillsSequencing.qpnet.spec_datasets import SkillDataset
-from SkillsSequencing.robots.gripper.gripper2d import Gripper2D
+from SkillsSequencing.robots.gripper.gripper3d import Gripper3D
 
 device = prepare_torch()
 current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -44,21 +44,22 @@ def gripper_experiment(options):
         pick_ori = [-1.0, 0.0]
         place_ori = [0.0, -1.0]
     else:
-        nb_dofs_arm = 4
-        nb_dofs_finger = 3
-        arm_link_length = 4
-        gripper_link_length = 2
+        nb_dofs_arm = 6
+        nb_dofs_finger = 1
+        #arm_link_length = 4
+        #gripper_link_length = 2
         reset_demo_log = False
-        q0 = np.array([np.pi / 2, np.pi / 4, 0.2, 0., np.pi / 2, -np.pi / 3, -np.pi / 6, -np.pi / 2, np.pi / 3,
-                       np.pi / 6])
+        # 0-5: arm joint angle, 6: gripper position
+        q0 = np.array([0.7379, -1.6685, 1.5848, -1.5527, -1.5471, 1.2541, 0])
+        #q0 = np.array([np.pi / 2, np.pi / 4, 0.2, 0., np.pi / 2, -np.pi / 3, -np.pi / 6, -np.pi / 2, np.pi / 3,
+        #               np.pi / 6])
         pick_goal, place_goal, pick_ori, place_ori = get_pickplace_parameters()
 
     # Load arm skills paths
     pick_ds, pick_clf, place_ds, place_clf = get_pickplace_arm_skill_files()
 
     # Create robot
-    robot = Gripper2D(nb_dofs_arm=nb_dofs_arm, nb_dofs_finger=nb_dofs_finger,  arm_link_length=arm_link_length,
-                      gripper_link_length=gripper_link_length)
+    robot = Gripper3D()
 
     nb_dofs = nb_dofs_arm + 2 * nb_dofs_finger
 
@@ -66,26 +67,28 @@ def gripper_experiment(options):
     ts_pos = np.array([[10, 0, 1, 0]])
     pick_pos_skill = TaskspaceSkillBatch(ts_pos, name='pick', compute_fct_batch=robot.compute_ts_arm_fct,
                                          compute_jacobian_fct_batch=robot.compute_ts_jacobian_arm_fct,
-                                         config_idx=robot.arm_idx, state_idx=[0, 1, 2, 3])
-
+                                         state_idx=[0, 1, 2, 3])
+    
+    
     ts_pos = np.array([[10, 0, 1, 0]])
     place_pos_skill = TaskspaceSkillBatch(ts_pos, name='place', compute_fct_batch=robot.compute_ts_arm_fct,
                                           compute_jacobian_fct_batch=robot.compute_ts_jacobian_arm_fct,
-                                          config_idx=robot.arm_idx, state_idx=[0, 1, 2, 3])
-
+                                          state_idx=[0, 1, 2, 3])
+    
     qclose = np.array([np.pi/2, -np.pi/2, -np.pi/3, -np.pi/2, np.pi/2, np.pi/3])
-    close_gripper_skill = JointPositionSkillBatch(qclose, name='close', config_idx=robot.gripper_idx,
+    close_gripper_skill = JointPositionSkillBatch(qclose, name='close',
                                                   state_idx=[4, 5, 6, 7, 8, 9])
 
     qopen = np.array([np.pi/2, -np.pi/2, -np.pi/3, -np.pi/2, np.pi/2, np.pi/3])
-    open_gripper_skill = JointPositionSkillBatch(qopen, name='open', config_idx=robot.gripper_idx,
+    open_gripper_skill = JointPositionSkillBatch(qopen, name='open',
                                                  state_idx=[4, 5, 6, 7, 8, 9])
-
+    
     skill_list = [pick_pos_skill, place_pos_skill, close_gripper_skill, open_gripper_skill]
     skill_fcns = [create_ds_skill('../../' + pick_clf, '../../' + pick_ds, pick_ori, pick_goal, speed=0.15),
                   create_ds_skill('../../' + place_clf, '../../' + place_ds, place_ori, place_goal, speed=0.3),
                   robot.close_skill, robot.open_skill]
-
+    
+    
     # Define skills clusters
     # One softmax function is defined per skill cluster to guarantee that at least on skill is activated per cluster
     skill_cluster_idx = [0, 2]  # 0, 1 -> arm and 2, 3 -> hand skills
@@ -94,7 +97,7 @@ def gripper_experiment(options):
     loss_weights = np.array([1.0, 1.0, 1.0, 1.0])
 
     # Create the experiment
-    exp = Gripper2DExp(skill_list, skill_fcns, robot)
+    exp = Gripper3DExp(skill_list, skill_fcns, robot)
     skill_dim = sum([skill_list[i].dim() for i in range(len(skill_list))])
     skill_list, xt_d, dxt_d, desired_, ctrl_idx = exp.get_taskspace_training_data(fname=data_file)
     batch_skill = SkillComplex(skill_dim, nb_dofs, skill_list, skill_cluster_idx=skill_cluster_idx)

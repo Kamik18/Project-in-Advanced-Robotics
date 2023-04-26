@@ -13,7 +13,7 @@ plt.rcParams['text.latex.preamble'] = r'\usepackage{bm}'
 matplotlib.rc_file_defaults()
 
 
-class Gripper2DExp:
+class Gripper3DExp:
     """
     This class defines a pick and place experiment for a planar robot with a gripper.
     """

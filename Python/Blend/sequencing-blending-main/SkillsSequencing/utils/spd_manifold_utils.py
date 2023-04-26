@@ -16,7 +16,8 @@ def sqrtm_torch(x):
     -------
     :return: sqrtm(x)
     """
-    eigenvalues, eigenvectors = torch.symeig(x, eigenvectors=True)
+    #eigenvalues, eigenvectors = torch.symeig(x, eigenvectors=True)
+    eigenvalues, eigenvectors = torch.linalg.eigh(x)
 
     sqrt_eigenvalues = torch.sqrt(torch.maximum(eigenvalues, torch.zeros_like(eigenvalues)))  # Assume real eigenvalues (first column only)
 
