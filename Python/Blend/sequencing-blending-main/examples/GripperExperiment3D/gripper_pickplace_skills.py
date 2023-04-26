@@ -10,10 +10,10 @@ device = prepare_torch()
 
 
 def get_pickplace_parameters():
-    pick_ori = [-1.0, 0.0]
-    place_ori = [0.0, -1.0]
-    pick_goal = np.array([-8.5, 2.5])
-    place_goal = np.array([0.0, -9.5])
+    pick_ori = [2.8404, 1.5572, -2.9757] #[-1.0, 0.0]
+    place_ori = [1.6785, 1.5402, -2.7627] #[0.0, -1.0]
+    pick_goal = np.array([0.2876, 0.4443, 0.1638])#np.array([-8.5, 2.5])
+    place_goal = np.array([0.5266, -0.2173, 0.1675])#np.array([0.0, -9.5])
 
     return pick_goal, place_goal, pick_ori, place_ori
 
@@ -27,8 +27,8 @@ def get_pickplace_arm_skill_files():
 
 
 def create_ds_skill(clf_file, reg_file, qtarget, goal, speed=0.01):
-    clf_model = WSAQF(dim=2, n_qfcn=1)
-    reg_model = SimpleNN(2, 2, (20, 20))
+    clf_model = WSAQF(dim=3, n_qfcn=1)#WSAQF(dim=2, n_qfcn=1)
+    reg_model = SimpleNN(3, 3, (20, 20)) #SimpleNN(2, 2, (20, 20))
     clfds = CLFDS(clf_model, reg_model, rho_0=0.1, kappa_0=0.0001)
     clfds.load_models(clf_file=clf_file, reg_file=reg_file)
 

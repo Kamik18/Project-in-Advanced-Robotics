@@ -23,6 +23,7 @@ bSaveFiles = False
 
 FileName = 'A_Place'
 sPath = 'Python/DMP/Out/'+ FileName +'.txt'
+DIST_THRESHOLD = 0.1
 
 def euler_from_quaternion(x, y, z, w):
         """
@@ -91,26 +92,49 @@ def get_q_from_trans(HomgenTrans,UR5,q_init):
 
     return q
 
+def distance_to_point(start_pos, end_pos):
+    '''
+    Function to calculate the distance to a point
+    Args:
+    - start_pos(SE3): start position
+    - end_pos(SE3): desired position
+
+    Returns:
+    - distance (int): Euclidian distance between end effector and desired goal position in cartisian space
+    ''' 
+    # Calculate the distance
+    distance = math.sqrt(((start_pos.t[0] - end_pos.t[0]) ** 2) + ((start_pos.t[1] - end_pos.t[1]) ** 2) + ((start_pos.t[2] - end_pos.t[2]) ** 2)).real
+    # Return the distance
+    return distance
+
+def add_marker(TransformationMatrix, color, bSinglePOint=False):
+    if bSinglePOint:
+        marker = sg.Sphere(0.005, pose=TransformationMatrix, color=color)
+        env.add(marker)
+        return
+    else:    
+        for i in TransformationMatrix:
+            marker = sg.Sphere(0.005, pose=i, color=color)
+            env.add(marker)
+
+
 if __name__ == '__main__':
     
-    # Load a demonstration file containing robot positions.
-    #demo = np.loadtxt("Python/DMP/demo.dat", delimiter=" ", skiprows=1)
     #demo = np.loadtxt("Records\Pick_A_1\Record_tcp.txt", delimiter=",", skiprows=0)
-    # Open the file for reading
+    
     tuples =[]
-    with open("Records\Pick_B_2\Record_tcp.txt", "r") as f:
-        # Loop over the lines in the file
+    with open("Records\Pick_A_2\Record_tcp.txt", "r") as f:
         for i, line in enumerate(f):
             # Check if the line number is odd
             if i % 5 == 4:
                 values = tuple(map(float, line.strip()[1:-1].split(',')))
-                # Append the tuple to the list
                 tuples.append(values)
 
     demo = np.array(tuples)
     print("Demp shape: ", demo.shape)
-    tau = 0.001 * len(demo)
-    t = np.arange(0, tau, 0.001)
+    tau = 0.003 * len(demo)
+    t = np.arange(0, tau, 0.003)
+    N = 15 #This will change the shape and size of the movement trajectory
     
     
     demo_p = demo[:, 0:3]
@@ -137,11 +161,13 @@ if __name__ == '__main__':
         demo_quat_array[n] = [d[0],d[1],d[2],d[3]]
 
 
-    N = 2 #This will change the shape and size of the movement trajectory
-    
+   
     #Position...
     dmp = PositionDMP(n_bfs=N, alpha=48.0)
+    dmp.p0 = (demo_p[0])
+    dmp.gp = (demo_p[len(demo_p)-1])
     dmp.train(demo_p, t, tau)
+    
 
     # Rotation...
     dmp_rotation = RotationDMP(n_bfs=N, alpha=48.0)
@@ -162,40 +188,68 @@ if __name__ == '__main__':
         result_eulr[n] = euler_from_quaternion(d[0],d[1],d[2],d[3])
 
 
+    ###################################################
+
+
+
     env = swift.Swift()
     env.launch(realtime=True)
+
     UR5 = rtb.models.UR5() 
-    UR5.payload(1.5, [0,0,0.05])
-
-    box = sg.Cuboid([1,1,-0.10], base=SE3(0,0,0.05), color=[0,0,1])
-    env.add(box)
-
+    UR5.base = SE3(0.4,0.3,0)
+    UR5.payload(1.390, [0,0, 0.057])
     env.add(UR5)
 
-    
-    
+    box = sg.Cuboid([1,1,-0.10], base=SE3(0,-0.05,-0.05), color=[0,0,1])
+    env.add(box)
 
-    # demo trajectory
-    q_init = np.array([0,0,0,0,0,0])
     homgenTransList =[]
     homgenTransList = trans_from_pos_quat(demo_p, demo_quat_array, True)  
-    for trans in homgenTransList:
-        marker = sg.Sphere(0.01, pose=trans, color=[0,1,0])
-        marker.pose = trans
-        env.add(marker)
-        sol = UR5.ikine_LM(trans, q0=q_init)
+   
+
+    q_init = [-np.pi / 2, np.pi / 2, -np.pi / 2, -np.pi / 2, -np.pi , 0]
+    UR5.q = q_init
+    env.step()
+    sol = UR5.ikine_LM(trans_from_pos_quat(demo_p[0],demo_quat_array[0],False),search=True)
+    
+    print("sol: ", sol.q)
+    if not UR5.iscollided(sol.q,box,skip=True):
         q_init = sol.q
         UR5.q = sol.q
         env.step()
     
+    
+    
+    # Dmo marker
+    
+
+    for trans in homgenTransList:
+        add_marker(trans, [0,1,0])
+        sol = UR5.ikine_LM(trans, q0=q_init)
+        jac= UR5.jacob0(sol.q)
+        # calculate the determinant of the jacobian 
+        det_J = np.linalg.det(jac)
+        if abs(det_J) < 1e-6:
+            print("Singularity")
+        if not UR5.iscollided(sol.q,box):
+            #q_init = sol.q
+            UR5.q = sol.q    
+            env.step()
+        else:
+            sol = UR5.ikine_LM(trans, search=True)
+            print("solss: ", len(sol.q))
+            print("solss: ", len(sol))
+            q_init = sol.q
+            UR5.q = sol.q    
+            env.step()
+
+
     homgenTransList =[]
     homgenTransList = trans_from_pos_quat(dmp_p, result_quat_array, True)
     
     # dmp trajectory
     for trans in homgenTransList:
-        marker = sg.Sphere(0.01, pose=trans, color=[1,0,0])
-        marker.pose = trans
-        env.add(marker)
+        add_marker(trans, [1,0,0])
         sol = UR5.ikine_LM(trans, q0=q_init)
         q_init = sol.q
         UR5.q = sol.q

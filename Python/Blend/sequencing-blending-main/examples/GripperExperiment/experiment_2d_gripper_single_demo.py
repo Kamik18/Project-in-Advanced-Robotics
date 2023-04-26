@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 
 from examples.GripperExperiment.gripper_experiment_classes import Gripper2DExp
 from examples.GripperExperiment.gripper_pickplace_skills import *
-from SkillsSequencing.skills.skill_classes import *
+from SkillsSequencing.skills.skill_classes3d import *
 from SkillsSequencing.qpnet.constraints import TaskSpaceVariableConstraint
 from SkillsSequencing.qpnet import qpnet_policies as policy_classes
 from SkillsSequencing.qpnet.spec_datasets import SkillDataset
@@ -21,7 +21,7 @@ os.sys.path.insert(0, '../' + current_dir)
 def gripper_experiment(options):
     # Define training parameters
     learning_rate = 0.1
-    MAX_EPOCH = 50
+    MAX_EPOCH = 10
     model_fpath = main_dir + '/' + options.policy_file
     data_file = main_dir + '/' + options.data_file
 

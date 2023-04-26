@@ -335,21 +335,18 @@ if __name__ == "__main__":
     }
     
     joint_init =  [-1.5207427183734339, -1.7672444782652796, 2.0703089872943323, -1.8949862919249476, -1.6235335508929651, 0.47969508171081543]
-    tcp_init = [-0.11393864957703922, 0.4495333526836168, -0.07185608921857356, 1.5553759729297227, -0.45710594525512366, -0.14085995620748915]
+    #tcp_init = [-0.11393864957703922, 0.4495333526836168, -0.07185608921857356, 1.5553759729297227, -0.45710594525512366, -0.14085995620748915]
 
-    numere  = 24
-
+    numere  = 0
+    
     # Main loo
     for i_run in range(1):  
-        rtde_c.moveL(tcp_init, 0.2, 0.2)
-        time.sleep(0.5)
-        rtde_c.moveJ(joint_init, 0.5, 0.5)
-        # Zero Ft sensor
+        
         rtde_c.zeroFtSensor()
         time.sleep(1.0)   
         os.system(f"play -nq -t alsa synth {0.5} sine {440}") 
         
-        folder_name = "Records/Up_A/"+ str(numere)
+        folder_name = "Records/TEST/"+ str(numere)
         if not os.path.exists(folder_name):
             os.makedirs(folder_name)
 
