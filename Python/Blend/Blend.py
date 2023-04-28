@@ -14,8 +14,7 @@ import winsound
 
 
 class Trajectory():
-
-    def __init__(self, env, UR5, box) -> None:
+    def __init__(self, UR5, box) -> None:
         #self.env = env
         self.UR5 = UR5
         self.box = box
