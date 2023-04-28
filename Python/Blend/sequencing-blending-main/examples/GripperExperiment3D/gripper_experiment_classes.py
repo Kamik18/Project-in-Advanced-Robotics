@@ -32,6 +32,36 @@ class Gripper3DExp:
         self.skill_fcns = skill_fcns
         self.gripper = gripper
 
+    def fetch_data(self, path):
+        from glob import glob
+        import numpy as np
+        
+        # Iterate the files
+        # Open the file and read the data line by line
+        with open(path, "r", encoding="utf-8") as f:
+            # Read the data
+            data: list = f.readlines()
+
+            # Iterate the data
+            for i in range(len(data)):
+                # Split the data and convert to float                
+                data[i] = data[i].replace('[', '').replace(']', '')
+                data[i] = data[i].split()
+                data[i] = [float(x) for x in data[i]]
+                
+                if len(data[i]) != 6:
+                    print(f"Error: {path}, line: {i}")
+                    continue
+                
+                if i > 0:
+                    for j in range(3, 6):
+                        if abs(data[i][j] - data[i-1][j]) > 5:
+                            if (data[i][j] - data[i-1][j]) > np.pi:
+                                data[i][j] -= 2*np.pi
+                            elif (data[i][j] - data[i-1][j]) < -np.pi:
+                                data[i][j] += 2*np.pi
+        return np.array(data)
+
     def reset_demo_log_after_ndofs_change(self, q0):
         """
         This function resets the log of the demonstration data.
@@ -68,24 +98,33 @@ class Gripper3DExp:
         :return desired_: desired control values given by the skills along the trajectory
         :return ctrl_idx: vector of control ids, skills with same control type share a control id
         """
+        demo_log_pos = self.fetch_data('../../../Up_A_j.txt')
+        demo_log_vel = self.fetch_data('../../../Up_A_velocity.txt')
+        
         demo_log = np.load(fname)
         self.demo_log = dict(demo_log)
-
+        
         if self.demo_log is None:
             raise ValueError('Please generate demo first')
 
         traj = self.demo_log['xpt']
         for i in range(len(self.skill_list)):
+            
             desired_value = np.stack([self.skill_fcns[i](traj[t, :2]) for t in np.arange(0, traj.shape[0])])
             self.skill_list[i].update_desired_value(desired_value)
 
         # Prepare training data
         qt_d = self.demo_log['qt']
+        print(qt_d.shape)
         xpt_d = self.demo_log['xpt']
+        print(xpt_d.shape)
         xot_d = self.demo_log['xot']
+        print(xot_d.shape)
         K = self.demo_log['K'][0,0]
+        print(K.shape)
         dt = self.demo_log['dt']
-
+        print(dt.shape)
+        exit(1)
         dqt_d = (qt_d[1:, :] - qt_d[:-1, :]) / (K * dt)
         dxpt_d = (xpt_d[1:, :] - xpt_d[:-1, :]) / (K * dt)
         dxot_d = sphere_logarithmic_map_batch(xot_d[:-1, :], xot_d[1:, :]) / (K * dt)

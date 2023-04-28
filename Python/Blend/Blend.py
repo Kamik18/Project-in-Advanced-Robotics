@@ -7,14 +7,14 @@ from spatialmath import SE3
 from spatialmath.base import *
 import spatialgeometry as sg
 from cmath import pi, sqrt
-import transforms3d.quaternions as txq
+#import transforms3d.quaternions as txq
 import matplotlib.pyplot as plt
 from scipy.interpolate import CubicSpline
-import winsound
+#import winsound
 
 
 class Trajectory():
-    def __init__(self, UR5, box) -> None:
+    def __init__(self, UR5: rtb.ERobot, box=None) -> None:
         #self.env = env
         self.UR5 = UR5
         self.box = box
@@ -22,7 +22,6 @@ class Trajectory():
         # Steps per second - 20 steps is equal to a step each 0.05 seconds
         self.sps: int = 20
         
-
     def inverse_kinematics(self, trans, q0):
         '''
         Function to calculate the inverse kinematic and find alternative solutions
@@ -64,7 +63,6 @@ class Trajectory():
 
         # Return the error
         return -1
-    
     
     def distance_to_point(self, start_pos, end_pos):
         '''
@@ -108,7 +106,7 @@ class Trajectory():
 
             return trajectory.Trajectory("jtraj", time_vec, np.asarray(joint_pos), istime=True)
 
-        if isinstance(start_pos, list) and isinstance(end_pos, list):
+        if (isinstance(start_pos, list) and isinstance(end_pos, list)) or (isinstance(start_pos, np.ndarray) and isinstance(end_pos, np.ndarray)):
             joint_pos_start = start_pos
             joint_pos_end = end_pos
             return rtb.jtraj(joint_pos_start, joint_pos_end, time_vec)
@@ -226,6 +224,126 @@ class Trajectory():
         # Return the new trajectory
         return comb_traj
     
+    def blendTwoPointsTraj(self, traj1, traj2, duration, printpath=False):
+        """
+        
+        """        
+        
+        # End of traj1 has to be same location as start of traj2, within 0.1
+        if not np.allclose(traj1[-1], traj2[0], atol=0.1):
+            print('traj not same location')
+            return -1
+        
+        tau = duration
+        
+        #  duration of interpolation is calculated as length of traj1 divided by step_pr_sec
+        T1 = len(traj1)/self.sps
+        # Define midpoint
+        T_mid = traj1[-1]
+        
+        # Calculate the velocity of the two trajectories
+        v1 = (traj1[0] - traj1[-1]) / (0 - T1)
+        v2 = (traj2[-1] - traj1[-1]) / T1
+        
+        # Calculate the coefficients
+        K = (v2 - v1) / (4 * tau)
+        K2 = -T1 + tau
+        K3 = v1
+        K4 = -T1
+        K5 = T_mid
+        
+        a = K
+        b = 2 * K * K2 + K3
+        c = K * pow(K2, 2) + K3 * K4 + K5
+
+        # Create time vector
+        time_vec = np.linspace(0, tau, int(tau*self.sps))
+        
+        # Start
+        t = T1 - tau
+        blended_traj = np.zeros((len(time_vec), 6))
+        for i in range(len(time_vec)):
+            blended_traj[i] = a * t * t + b * t + c 
+            t += 0.1
+
+        return blended_traj
+        """
+        # Create time vector
+        time_vec = np.linspace(0, tau*2, int(tau*2*step_pr_sec))
+        # Start
+        t = T1 - tau
+        # Create new trajectory with temp data
+        blended_traj = rtb.jtraj(v1, v2, time_vec)
+        for i in range(len(time_vec)):
+            blended_traj.q[i] = a * t * t + b * t + c 
+            t += 0.05
+        """
+        # Only print paths, if printpath is true
+        if printpath:
+            for joint_pos in traj1.q:
+                q = self.UR5.fkine(joint_pos)
+                mark = sg.Sphere(0.01, pose=q, color=(1.0,0.0,0.0))
+                self.env.add(mark)
+                
+            for joint_pos in blended_traj.q:
+                q = self.UR5.fkine(joint_pos)
+                mark = sg.Sphere(0.01, pose=q, color=(0.0,1.0,0.0))
+                self.env.add(mark)
+
+            for joint_pos in traj2.q:
+                q = self.UR5.fkine(joint_pos)
+                mark = sg.Sphere(0.01, pose=q, color=(1.0,0.0,0.0))
+                self.env.add(mark)
+        # Combine trajectories
+        # Make trajectory of given size
+        entireduration = T1+tau
+        time_vec = np.linspace(0, entireduration, int(entireduration*self.sps))
+        comb_traj = rtb.jtraj(v1, v2, time_vec)
+        
+        # Combine traj1, blended_traj and traj2
+        len_blend = len(blended_traj.q)
+        len1 = int((len(traj1.q)-len_blend))
+        len2 = len1+len_blend
+        comb_traj.q[0:len1] = traj1.q[0:len1]
+        comb_traj.q[len1:len2] = blended_traj.q
+        comb_traj.q[len2:] = traj2.q[len1:]
+
+        # Return the new trajectory
+        return comb_traj
+    
+    def traj_poly(self, s0,stf,sd0,sdtf,sdd0,sddtf,t):
+        t0=t[0] # Note! t0 must always 0
+        tf=t[-1]
+        if t0 != 0:
+            print('Error: t0 =', t0)
+            return 0
+        #solving for equation
+        coef = np.zeros((6,1)) #we are looking for this
+        param = np.asarray([[s0],[stf],[sd0],[sdtf],[sdd0],[sddtf]])
+        mat = np.asarray([[0,0,0,0,0,1],
+                [tf**5,tf**4,tf**3,tf**2,tf,1],
+                [0,0,0,0,1,0],
+                [5*tf**4,4*tf**3,3*tf**2,2*tf,1,0],
+                [0,0,0,2,0,0],
+                [20*tf**3,12*tf**2,6*tf,2,0,0]])
+        mat_i = np.linalg.inv(mat) #inverse
+        coef = np.matmul(mat_i,param) #acquiring A B C D E F
+
+        #using equation
+        zeros = np.zeros(t.shape)
+        ones = np.ones(t.shape)
+        twos = ones*2
+        mat = np.asarray([ #the original equation
+            [t**5,t**4,t**3,t**2,t,ones],
+            [5*t**4,4*t**3,3*t**2,2*t,ones,zeros],
+            [20*t**3,12*t**2,6*t,twos,zeros,zeros]
+        ])
+        coef_tensor=(np.repeat(coef,t.size,axis=1))
+        coef_tensor=np.reshape(coef_tensor,(coef_tensor.shape[0],1,coef_tensor.shape[1]))
+        # d = np.tensordot(mat,coef_tensor,axes=[1, 0]).diagonal(axis1=1, axis2=3) #alternative way
+        res = np.einsum('mnr,ndr->mdr', mat, coef_tensor)
+        return res
+
     def jointPositions(self):
         return [
             # Pick up
