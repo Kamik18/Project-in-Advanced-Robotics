@@ -137,30 +137,46 @@ UR5.q = q0
 connectionTraj = traj.makeTraj(down_b[-1], up_a[0])
 returnToStart = traj.makeTraj(down_a[-1], up_b[0])
 
-t = np.arange(0,10)
-x = traj.traj_poly(0,1,0,0,0,0,t)
-y = traj.traj_poly(0,1,0,0,0,0,t)
+via = np.asarray([0,50,30,40,0])
+print(via)
+dur = np.asarray([10,15,20,20])
+print(dur)
+tb = np.asarray([1,1,1,1,1])*5
+print(tb)
+res = traj.lspb(via, dur, tb)
 
-print('x', x)
-xy = np.concatenate([x,y])
-#print(xy)
 
-fig = plt.figure()
-ax = fig.add_subplot(111)#, projection='3d')
+plt.plot(res[2],via,'*',res[3],res[4])
+plt.show()
 
+#t = np.arange(0,10)
+#x = traj.traj_poly(0,1,0,0,0,0,t)
+#y = traj.traj_poly(0,1,0,0,0,0,t)
+#z = traj.traj_poly(0,1,0,0,0,0,t)
+
+#xyz = np.stack([x,y,z])
+#print('xyz shape', xyz.shape)
+#xyz = np.squeeze(xyz)
+#print('xyz shape after squeeze', xyz.shape)
+
+
+#fig2 = plt.figure()
+#ax2 = fig2.add_subplot(111)
+#ax2.plot(x[0,0,:],'r')
+#plt.show()
 #ax.plot(x[0,0,:], x[1,0,:], x[2,0,:], 'r', label='x')  # plot x
 #ax.plot(y[0,0,:], y[1,0,:], y[2,0,:], 'g', label='y')  # plot y
 #ax.plot(z[0,0,:], z[1,0,:], z[2,0,:], 'g', label='z')  # plot z
 
 #ax.plot(x[0,0,:],'r',x[1,0,:],'g',x[2,0,:],'b', label='x')
-ax.plot(t, y[0,0,:],'r',y[1,0,:],'g',y[2,0,:],'b')
+#ax.plot(t, y[0,0,:],'r',y[1,0,:],'g',y[2,0,:],'b')
 #ax.plot(x[0, 0, :] + y[0, 0, :], x[1, 0, :] + y[1, 0, :], x[2, 0, :] + y[2, 0, :], 'b', label='x+y')
 
-ax.set_xlabel('X')
-ax.set_ylabel('Y')
+#ax.set_xlabel('X')
+#ax.set_ylabel('Y')
 #ax.legend()
 
-plt.show()
+#plt.show()
 
 
 exit(1)
