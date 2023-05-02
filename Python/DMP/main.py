@@ -25,7 +25,7 @@ bSaveFiles = False
 bOriention = True
 
 TRAINING_TIME = 10.0
-DMP_TIME = 10.0
+DMP_TIME = 5.0
 
 
 FileName = 'Records/Up_A/10/'
@@ -117,9 +117,9 @@ if __name__ == '__main__':
     with open(FileName + "record_tcp.txt", "r") as f:
         for i, line in enumerate(f):
             # Check if the line number is odd
-            #if i % 5 == 4:
-            values = tuple(map(float, line.strip()[1:-1].split(',')))
-            tuples.append(values)
+            if i % 5 == 4:
+                values = tuple(map(float, line.strip()[1:-1].split(',')))
+                tuples.append(values)
 
     demo = np.array(tuples)
 
@@ -127,9 +127,9 @@ if __name__ == '__main__':
     with open(FileName + "record_j.txt", "r") as f:
         for i, line in enumerate(f):
             # Check if the line number is odd
-            #if i % 5 == 4:
-            values = tuple(map(float, line.strip()[1:-1].split(',')))
-            tuples_joints.append(values)
+            if i % 5 == 4:
+                values = tuple(map(float, line.strip()[1:-1].split(',')))
+                tuples_joints.append(values)
 
     demo_joint = np.array(tuples_joints)
 
@@ -214,32 +214,32 @@ if __name__ == '__main__':
 
         homgenTransList =[]
         homgenTransList = trans_from_pos_quat(demo_p, demo_quat_array, True)  
-    
+        add_marker(homgenTransList, [1,0,0])
 
-        q_init = demo_joint[0]
-        UR5.q = q_init
+        # q_init = demo_joint[0]
+        # UR5.q = q_init
         
-        env.step()
+        # env.step()
 
-        for trans in homgenTransList:
-            add_marker(trans, [0,1,0],True)
-            sol = UR5.ikine_LM(trans, q0=q_init)
-            jac= UR5.jacob0(sol.q)
-            # calculate the determinant of the jacobian 
-            det_J = np.linalg.det(jac)
-            if abs(det_J) < 1e-6:
-                print("Singularity")
-            if not UR5.iscollided(sol.q,box):
-                #q_init = sol.q
-                UR5.q = sol.q    
-                env.step()
-            else:
-                sol = UR5.ikine_LM(trans, search=True)
-                print("solss: ", len(sol.q))
-                print("solss: ", len(sol))
-                q_init = sol.q
-                UR5.q = sol.q    
-                env.step()
+        # for trans in homgenTransList:
+        #     add_marker(trans, [0,1,0],True)
+        #     sol = UR5.ikine_LM(trans, q0=q_init)
+        #     jac= UR5.jacob0(sol.q)
+        #     # calculate the determinant of the jacobian 
+        #     det_J = np.linalg.det(jac)
+        #     if abs(det_J) < 1e-6:
+        #         print("Singularity")
+        #     if not UR5.iscollided(sol.q,box):
+        #         #q_init = sol.q
+        #         UR5.q = sol.q    
+        #         env.step()
+        #     else:
+        #         sol = UR5.ikine_LM(trans, search=True)
+        #         print("solss: ", len(sol.q))
+        #         print("solss: ", len(sol))
+        #         q_init = sol.q
+        #         UR5.q = sol.q    
+        #         env.step()
 
 
         print("Done demo")
@@ -248,6 +248,8 @@ if __name__ == '__main__':
 
         homgenTransList =[]
         homgenTransList = trans_from_pos_quat(dmp_p, result_quat_array, True)
+        add_marker(homgenTransList, [0,1,0])
+        
         for trans in homgenTransList:
             add_marker(trans, [1,0,0],True)
             sol = UR5.ikine_LM(trans, q0=q_init)
