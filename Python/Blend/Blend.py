@@ -312,6 +312,22 @@ class Trajectory():
         return comb_traj
     
     def traj_poly(self, s0,stf,sd0,sdtf,sdd0,sddtf,t):
+        """
+        This is a polynomial trajectory generator. 
+        
+        Args:
+        s0 (int): Initial position
+        stf (int): Final position
+        sd0 (int): Initial velocity
+        sdtf (int): Final velocity
+        sdd0 (int): Initial acceleration
+        sddtf (int): Final acceleration
+        t (np.ndarray): Time vector
+
+        Returns:
+        np.ndarray: Data from the records. 
+        np.ndarray: Returns a an array of a polynomial trajectory of the given order. Shape: (both position, velocity, acceleration)
+        """
         t0=t[0] # Note! t0 must always 0
         tf=t[-1]
         if t0 != 0:
@@ -343,6 +359,129 @@ class Trajectory():
         # d = np.tensordot(mat,coef_tensor,axes=[1, 0]).diagonal(axis1=1, axis2=3) #alternative way
         res = np.einsum('mnr,ndr->mdr', mat, coef_tensor)
         return res
+
+    def linearInterpolation(self, point0, v0, t0, t1, step=1):
+        """
+        function for linear interpolation
+
+        Returns:
+            - np.ndarray: (time vector, position, velocity, acceleration)
+        """
+        # Generate a series of timestep
+        t = np.arange(t0, t1+step,step)#makit one column
+        # Calculate velocity
+        v = v0
+        #time shift
+        Ti = t0
+        #equation
+        s = point0 + v*(t-Ti)
+        v = np.ones(t.size)*v
+        a = np.zeros(t.size)
+        return (t,s,v,a)
+
+    def parab(self, p0, v0, v1, t0, t1, step=1):
+        # Generate a series of timestep
+        t = np.arange(t0, t1+step,step)
+        #calculate acceleration
+        a = (v1-v0)/(t1-t0)
+        #time shift
+        Ti=t0
+        # equation
+        s = p0  +v0*(t-Ti) +0.5*a*(t-Ti)**2
+        v = v0 + a*(t-Ti)
+        a = np.ones(t.size)*a
+        return (t,s,v,a)
+
+    def lspb(self, via,dur,tb):
+        """
+        https://github.com/novice1011/trajectory-planning
+        1. It must start and end at the first and last waypoint respectively with zero velocity
+        2. Note that during the linear phase acceleration is zero, velocity is constant and position is linear in time
+        Args:
+         - via (np.ndarray): array of via points
+         - dur (np.ndarray): array of via points
+         - tb (np.ndarray): array of via points
+        
+        """
+        
+        # if acc.min < 0 :
+        #     print('acc must bigger than 0')
+        #     return 0
+        if ((via.size-1) != dur.size):
+            print('duration must equal to number of segment which is via-1')
+            return 0
+        if (via.size <2):
+            print('minimum of via is 2')
+            return 0
+        if (via.size != (tb.size)):
+            print('acc must equal to number of via')
+            return 0
+        
+        #=====CALCULATE-VELOCITY-EACH-SEGMENT=====
+        v_seg=np.zeros(dur.size)
+        for i in range(0,len(via)-1):
+            v_seg[i]=(via[i+1]-via[i])/dur[i]
+
+        #=====CALCULATE-ACCELERATION-EACH-VIA=====
+        a_via=np.zeros(via.size)
+        a_via[0]=(v_seg[0]-0)/tb[0]
+        for i in range(1,len(via)-1):
+            a_via[i]=(v_seg[i]-v_seg[i-1])/tb[i]
+        a_via[-1]=(0-v_seg[-1])/tb[-1]
+
+        #=====CALCULATE-TIMING-EACH-VIA=====
+        T_via=np.zeros(via.size)
+        T_via[0]=0.5*tb[0]
+        for i in range(1,len(via)-1):
+            T_via[i]=T_via[i-1]+dur[i-1]
+        T_via[-1]=T_via[-2]+dur[-1]
+
+        #=====GENERATING-CHART/GRAPH/FIGURE=====
+        # q(t) = q_i + v_{i-1}(t-T_i) + \frac{1}{2}a(t-T_i+\frac{t_i^b}{2})^2  #parabolic phase
+        # q(t) = q_i + v_i*(t-T_i)                 #linear phase
+        #parabolic
+        t,s,v,a = self.parab(via[0], 0, v_seg[0], T_via[0]-0.5*tb[0], T_via[0]+0.5*tb[0], step=1)
+        time    = t
+        pos     = s
+        speed   = v
+        accel   = a
+        
+        for i in range(1,len(via)-1):
+            # linear
+            t,s,v,a = self.linearInterpolation(pos[-1],v_seg[i-1],T_via[i-1]+0.5*tb[i],T_via[i]-0.5*tb[i+1],0.01)
+            time    = np.concatenate((time,t))
+            pos     = np.concatenate((pos,s))
+            speed   = np.concatenate((speed,v))
+            accel   = np.concatenate((accel,a))
+
+            #parabolic
+            t,s,v,a = self.parab(pos[-1], v_seg[i-1], v_seg[i], T_via[i]-0.5*tb[i+1], T_via[i]+0.5*tb[i+1], 0.01)
+            time    = np.concatenate((time,t))
+            pos     = np.concatenate((pos,s))
+            speed   = np.concatenate((speed,v))
+            accel   = np.concatenate((accel,a))
+
+        # linear
+        t,s,v,a = self.linearInterpolation(pos[-1],v_seg[-1],T_via[-2]+0.5*tb[-2],T_via[-1]-0.5*tb[-1],0.01)
+        time    = np.concatenate((time,t))
+        pos     = np.concatenate((pos,s))
+        speed   = np.concatenate((speed,v))
+        accel   = np.concatenate((accel,a))
+
+        #parabolic
+        t,s,v,a = self.parab(pos[-1], v_seg[-1], 0, T_via[-1]-0.5*tb[-1],  T_via[-1]+0.5*tb[-1], 0.01)
+        time    = np.concatenate((time,t))
+        pos     = np.concatenate((pos,s))
+        speed   = np.concatenate((speed,v))
+        accel   = np.concatenate((accel,a))
+
+        print('v seg = ',v_seg,
+        '\na via = ',a_via,
+        '\nT via = ',T_via,
+        '\ntime = ',time,
+        '\npos = ',pos)
+
+        return(v_seg,a_via,T_via,time,pos,speed,accel)
 
     def jointPositions(self):
         return [

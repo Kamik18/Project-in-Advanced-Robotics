@@ -1,14 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from spatialmath.base import *
+from spatialmath.base import x2r
 import swift
 import spatialgeometry as sg
 import roboticstoolbox as rtb
 from spatialmath import SE3
 from Blend import Trajectory
-from roboticstoolbox.tools import trajectory
-
-
 
 
 def fetch_data_from_records(path: str) -> np.ndarray:
@@ -66,12 +63,6 @@ def plot(data):
         ax.plot3D(set["x"], set["y"], set["z"],
                     color="black", alpha=0.25)
 
-    # Add the GMM path
-    #ax.plot3D(path_gmm["x"], path_gmm["y"],
-    #            path_gmm["z"], color="red", alpha=1.0, label="GMM")
-    # Mean path
-    #ax.plot3D(path_mean["x"], path_mean["y"],
-    #            path_mean["z"], color="green", alpha=1.0, label="Mean")
     ax.set_title(f"GMM with {len(data)} demonstrations")
     ax.set_xlabel("x")
     ax.set_ylabel("y")
@@ -93,17 +84,21 @@ def adddots(traj, colorref):
         mark = sg.Sphere(0.01, pose=q, color=colorref)
         env.add(mark)
 
+
 # TCP
-#up_b: np.ndarray = fetch_data_from_records("./Python/Blend/Up_B_Tcp.txt")
-#down_b: np.ndarray = fetch_data_from_records("./Python/Blend/Down_B_Tcp.txt")
-#down_a: np.ndarray = fetch_data_from_records("./Python/Blend/Down_A_Tcp.txt")
-#up_a: np.ndarray = fetch_data_from_records("./Python/Blend/Up_A_Tcp.txt")
+up_b: np.ndarray = fetch_data_from_records("./Python/Blend/Up_B_Tcp.txt")
+#up_b: np.ndarray = np.loadtxt("./Records/Up_B/1/record_tcp.txt", delimiter=',', skiprows=0)
+down_b: np.ndarray = fetch_data_from_records("./Python/Blend/Down_B_Tcp.txt")
+down_a: np.ndarray = fetch_data_from_records("./Python/Blend/Down_A_Tcp.txt")
+up_a: np.ndarray = fetch_data_from_records("./Python/Blend/Up_A_Tcp.txt")
 
 # Joints
-up_b: np.ndarray = fetch_data_from_records("./Python/Blend/Up_B_j.txt")
-down_b: np.ndarray = fetch_data_from_records("./Python/Blend/Down_B_j.txt")
-down_a: np.ndarray = fetch_data_from_records("./Python/Blend/Down_A_j.txt")
-up_a: np.ndarray = fetch_data_from_records("./Python/Blend/Up_A_j.txt")
+up_b_j: np.ndarray = fetch_data_from_records("./Python/Blend/Up_B_j.txt")
+#up_b_j: np.ndarray = np.loadtxt("./Records/Up_B/1/record_j.txt", delimiter=',', skiprows=0)
+down_b_j: np.ndarray = fetch_data_from_records("./Python/Blend/Down_B_j.txt")
+down_a_j: np.ndarray = fetch_data_from_records("./Python/Blend/Down_A_j.txt")
+up_a_j: np.ndarray = fetch_data_from_records("./Python/Blend/Up_A_j.txt")
+
 
 #Convert to trajectory
 #up_b = trajectory.Trajectory('jtraj', 2, up_b)
@@ -111,61 +106,71 @@ up_a: np.ndarray = fetch_data_from_records("./Python/Blend/Up_A_j.txt")
 #down_a = trajectory.Trajectory('jtraj', 2, down_a)
 #up_a = trajectory.Trajectory('jtraj', 2, up_a)
 
-#plot(up_b)
-#plot(down_a)
-#plot(joined_path)
-#plt.show()
-
-
-#env = swift.Swift()
-#env.launch(realtime=True)
+env = swift.Swift()
+env.launch(realtime=True)
 
 # Create an obstacles
 box = sg.Cuboid([2,2,-0.1], pose=SE3(0,0,0))
-#env.add(box)
+env.add(box)
 
 UR5 = rtb.models.UR5()
-#env.add(UR5)
+env.add(UR5)
 
 # Move the robot to the start position
-traj = Trajectory(UR5=UR5)
+traj = Trajectory(UR5=UR5, box=box)
 q0 =  [-np.pi / 2, -np.pi / 2, 0, -np.pi / 2, np.pi / 2, 0]
 UR5.q = q0
-#env.step()
+env.step()
 
 # Connection paths
-connectionTraj = traj.makeTraj(down_b[-1], up_a[0])
-returnToStart = traj.makeTraj(down_a[-1], up_b[0])
+#connectionTraj = traj.makeTraj(down_b[-1], up_a[0])
+#returnToStart = traj.makeTraj(down_a[-1], up_b[0])
 
-t = np.arange(0,10)
-x = traj.traj_poly(0,1,0,0,0,0,t)
-y = traj.traj_poly(0,1,0,0,0,0,t)
+via = np.asarray([0,50,30,40,0])
+print(via)
+dur = np.asarray([10,15,20,20])
+print(dur)
+tb = np.asarray([1,1,1,1,1])*5
+print(tb)
+res = traj.lspb(via, dur, tb)
 
-print('x', x)
-xy = np.concatenate([x,y])
-#print(xy)
 
-fig = plt.figure()
-ax = fig.add_subplot(111)#, projection='3d')
+plt.plot(res[2],via,'*',res[3],res[4])
+plt.show()
 
+#t = np.arange(0,10)
+#x = traj.traj_poly(0,1,0,0,0,0,t)
+#y = traj.traj_poly(0,1,0,0,0,0,t)
+#z = traj.traj_poly(0,1,0,0,0,0,t)
+
+#xyz = np.stack([x,y,z])
+#print('xyz shape', xyz.shape)
+#xyz = np.squeeze(xyz)
+#print('xyz shape after squeeze', xyz.shape)
+
+
+#fig2 = plt.figure()
+#ax2 = fig2.add_subplot(111)
+#ax2.plot(x[0,0,:],'r')
+#plt.show()
 #ax.plot(x[0,0,:], x[1,0,:], x[2,0,:], 'r', label='x')  # plot x
 #ax.plot(y[0,0,:], y[1,0,:], y[2,0,:], 'g', label='y')  # plot y
 #ax.plot(z[0,0,:], z[1,0,:], z[2,0,:], 'g', label='z')  # plot z
 
 #ax.plot(x[0,0,:],'r',x[1,0,:],'g',x[2,0,:],'b', label='x')
-ax.plot(t, y[0,0,:],'r',y[1,0,:],'g',y[2,0,:],'b')
+#ax.plot(t, y[0,0,:],'r',y[1,0,:],'g',y[2,0,:],'b')
 #ax.plot(x[0, 0, :] + y[0, 0, :], x[1, 0, :] + y[1, 0, :], x[2, 0, :] + y[2, 0, :], 'b', label='x+y')
 
-ax.set_xlabel('X')
-ax.set_ylabel('Y')
+#ax.set_xlabel('X')
+#ax.set_ylabel('Y')
 #ax.legend()
 
-plt.show()
+#plt.show()
 
 
-exit(1)
+"""
 #blendtesttraj = traj.blendTwoPointsTraj(connectionTraj.q, up_a, 1)
-blendtesttraj = traj.blendTwoPointsTraj(down_a, returnToStart.q,1)
+#blendtesttraj = traj.blendTwoPointsTraj(down_a, returnToStart.q,1)
 
 adddots(returnToStart.q, (0,1,0)) 
 adddots(down_a, (1,0,0)) # Starts up and moves down
@@ -177,17 +182,21 @@ for joint_pos in blendtesttraj:
     env.step()
 
 env.hold()
+Privacy Badget
+Adblocker
 
-"""
-joined_path = np.concatenate([up_b, down_b, connectionTraj.q, up_a, down_a, returnToStart.q])
+joined_path = np.concatenate([up_b, down_b, up_a, down_a])
 
-for joint_pos in joined_path:#joined_path:
-    UR5.q = joint_pos#traj.inverse_kinematics(create_4x4_matrix(temp), q0)#UR5.ik_lm_wampler(create_4x4_matrix(data[i*20]), ilimit=500, slimit=500, q0=UR5.q)[0]
+ 
+for joint_pos in joined_path:
+    UR5.q = joint_pos
+    #UR5.q = traj.inverse_kinematics(create_4x4_matrix(joint_pos), q0)
     q = UR5.fkine(joint_pos)
     mark = sg.Sphere(0.01, pose=q, color=(0,0,1))
     env.add(mark)
     env.step()
-"""
+
+
 
 
 #adddots(up_b, (1,0,0)) # Starts up and moves down
@@ -195,3 +204,4 @@ for joint_pos in joined_path:#joined_path:
 #adddots(up_a, (0,0,0)) # Starts up and moves down
 #adddots(down_a, (0,1,0)) # Starts down and moves up
 #env.hold()
+"""
