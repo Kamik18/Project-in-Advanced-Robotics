@@ -5,10 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from pyquaternion import Quaternion
-
 import roboticstoolbox as rtb
-
-import time
 from scipy.spatial.transform import Rotation as R
 from spatialmath import SE3
 from spatialmath.base import q2r   
@@ -24,36 +21,52 @@ bSMOTHER   = True
 bSaveFiles = False
 bOriention = True
 
+bDifferntTime = True
+
 TRAINING_TIME = 10.0
-DMP_TIME = 5.0
+DMP_TIME = 10.0
 
-
+#Up_B/1
 FileName = 'Records/Up_A/10/'
 sPath = 'Python/DMP/Out/'+ FileName +'.txt'
 
 def euler_from_quaternion(x, y, z, w):
-        """
-        Convert a quaternion into euler angles (roll, pitch, yaw)
-        roll is rotation around x in radians (counterclockwise)
-        pitch is rotation around y in radians (counterclockwise)
-        yaw is rotation around z in radians (counterclockwise)
-        """
-        t0 = +2.0 * (w * x + y * z)
-        t1 = +1.0 - 2.0 * (x * x + y * y)
-        roll_x = math.atan2(t0, t1)
-     
-        t2 = +2.0 * (w * y - z * x)
-        t2 = +1.0 if t2 > +1.0 else t2
-        t2 = -1.0 if t2 < -1.0 else t2
-        pitch_y = math.asin(t2)
-     
-        t3 = +2.0 * (w * z + x * y)
-        t4 = +1.0 - 2.0 * (y * y + z * z)
-        yaw_z = math.atan2(t3, t4)
-     
-        return roll_x, pitch_y, yaw_z # in radians
+    """
+    Converts quaternion to euler roll, pitch, yaw.
+    Args:
+        x (float): x component of quaternion
+        y (float): y component of quaternion
+        z (float): z component of quaternion
+        w (float): w component of quaternion
+
+    Returns:
+        tuple: roll, pitch, yaw in radians
+    """
+    t0 = +2.0 * (w * x + y * z)
+    t1 = +1.0 - 2.0 * (x * x + y * y)
+    roll_x = math.atan2(t0, t1)
+    
+    t2 = +2.0 * (w * y - z * x)
+    t2 = +1.0 if t2 > +1.0 else t2
+    t2 = -1.0 if t2 < -1.0 else t2
+    pitch_y = math.asin(t2)
+    
+    t3 = +2.0 * (w * z + x * y)
+    t4 = +1.0 - 2.0 * (y * y + z * z)
+    yaw_z = math.atan2(t3, t4)
+    
+    return roll_x, pitch_y, yaw_z # in radians
 
 def quat_to_angle_axis(q):
+    """Converts quaternion to angle axis.
+
+    Args:
+        q (_type_): quaternion
+
+    Returns:
+        _type_: angle axis np.array([x,y,z])
+    """
+
     angle_axis = np.empty((len(q),3))
     for i in range(len(q)-1):
         r = R.from_quat(q[i])
@@ -62,8 +75,19 @@ def quat_to_angle_axis(q):
     return angle_axis
 
 def trans_from_pos_quat(pos_list, quat_list, bList):
-    homgenTransList = []
+    """
+    Converts position and quaternion to transformation matrix.
     
+    Args:
+        pos_list (list): list of positions
+        quat_list (list): list of quaternions
+        bList (bool): if True, returns a list of transformation matrices, else returns a single transformation matrix
+        
+    Returns:
+        list: list of transformation matrices
+    """
+
+    homgenTransList = []
     if bList:
         
         for i in range(len(quat_list)-1):
@@ -89,6 +113,17 @@ def trans_from_pos_quat(pos_list, quat_list, bList):
         return SE3(homgenTrans, check=False)
 
 def get_q_from_trans(HomgenTrans,UR5,q_init):
+    """
+    Converts transformation matrix to joint angles.
+
+    Args:
+        HomgenTrans (list): list of transformation matrices
+        UR5 (roboticstoolbox): roboticstoolbox UR5 object
+        q_init (list): initial joint angles
+    
+    Returns:
+        list: list of joint angles
+    """
 
     q = np.empty((len(HomgenTrans),6))
     for i, trans in enumerate(HomgenTrans): 
@@ -99,6 +134,14 @@ def get_q_from_trans(HomgenTrans,UR5,q_init):
     return q
 
 def add_marker(TransformationMatrix, color, bSinglePOint=False):
+    """
+    Adds a marker to the simulation environment.
+
+    Args:
+        TransformationMatrix (list): list of transformation matrices
+        color (list): list of colors
+        bSinglePOint (bool): if True, adds a single marker to the environment, else adds multiple markers
+    """
     if bSinglePOint:
         marker = sg.Sphere(0.005, pose=TransformationMatrix, color=color)
         env.add(marker)
@@ -110,9 +153,9 @@ def add_marker(TransformationMatrix, color, bSinglePOint=False):
 
 
 if __name__ == '__main__':
-    #demo = np.loadtxt("Records\Pick_A_1\Record_tcp.txt", delimiter=",", skiprows=0)
+    # read text file using np 
+    #np.loadtxt(sPath, delimiter=',', skiprows=1)
 
-    
     tuples =[]
     with open(FileName + "record_tcp.txt", "r") as f:
         for i, line in enumerate(f):
@@ -138,7 +181,7 @@ if __name__ == '__main__':
     tau_train = TRAINING_TIME
     t_train = np.arange(0, tau_train, TRAINING_TIME/ len(demo))
     print("tau_train: ", tau_train)
-    N = 5 #Number of basis functions: Increasing the number of basis functions can make the trajectory smoother by allowing for more fine-grained control over the shape of the trajectory.
+    N = 10 #Number of basis functions: Increasing the number of basis functions can make the trajectory smoother by allowing for more fine-grained control over the shape of the trajectory.
     
     
     demo_p = demo[:, 0:3]
@@ -167,14 +210,15 @@ if __name__ == '__main__':
 
    
     #Position...
-    dmp = PositionDMP(n_bfs=N, alpha=40.0)
+    dmp = PositionDMP(n_bfs=N, alpha=40.0,beta=10.0)
     dmp.p0 = (demo_p[0])
     dmp.gp = (demo_p[len(demo_p)-1])
+    
     dmp.train(demo_p, t_train, tau_train)
     
 
     # Rotation...
-    dmp_rotation = RotationDMP(n_bfs=N, alpha=40.0)
+    dmp_rotation = RotationDMP(n_bfs=N, alpha=40.0, beta=10.0)
     dmp_rotation.train(demo_q, t_train, tau_train)
 
 
@@ -183,7 +227,9 @@ if __name__ == '__main__':
     print("len(demo): ", len(demo))
     print("tau: ", tau)
 
-    # Generate a new trajectory by executing the DMP system.  
+
+    # Generate a new trajectory by executing the DMP system. 
+    #dmp.gp = np.array([ 2.3,  1.6, -0.07122165]) 
     dmp_p, dmp_dp, dmp_ddp = dmp.rollout(t, tau)
     dmp_r, dmp_dr, dmp_ddr = dmp_rotation.rollout(t, tau)
     
