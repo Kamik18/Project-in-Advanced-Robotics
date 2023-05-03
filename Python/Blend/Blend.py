@@ -397,6 +397,11 @@ class Trajectory():
         https://github.com/novice1011/trajectory-planning
         1. It must start and end at the first and last waypoint respectively with zero velocity
         2. Note that during the linear phase acceleration is zero, velocity is constant and position is linear in time
+        Args:
+         - via (np.ndarray): array of via points
+         - dur (np.ndarray): array of via points
+         - tb (np.ndarray): array of via points
+        
         """
         
         # if acc.min < 0 :
