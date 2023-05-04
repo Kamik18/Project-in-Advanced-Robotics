@@ -126,3 +126,11 @@ def test3():
     plt.plot(xArray, yArray,x, y, label="Interpolation, " + str(n) + " points")
     plt.show()
 """
+
+"""
+######################Convert to trajectory###########################
+#up_b = trajectory.Trajectory('jtraj', 2, up_b)
+#down_b = trajectory.Trajectory('jtraj', 2, down_b)
+#down_a = trajectory.Trajectory('jtraj', 2, down_a)
+#up_a = trajectory.Trajectory('jtraj', 2, up_a)
+"""

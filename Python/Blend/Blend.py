@@ -399,8 +399,8 @@ class Trajectory():
         2. Note that during the linear phase acceleration is zero, velocity is constant and position is linear in time
         Args:
          - via (np.ndarray): array of via points
-         - dur (np.ndarray): array of via points
-         - tb (np.ndarray): array of via points
+         - dur (np.ndarray): array of duration for each segment
+         - tb (np.ndarray): array of acceleration for each segment
         
         """
         
