@@ -8,6 +8,8 @@ from spatialmath import SE3
 from Blend import Blend
 import time
 import math
+import mujoco_py
+import os
 
 
 def fetch_data_from_records(path: str) -> np.ndarray:
@@ -144,6 +146,24 @@ if swiftEnv:
     # Move the robot to the start position
     env.step()
 
+
+mj_path = mujoco_py.utils.discover_mujoco()
+xml_path = os.path.join(mj_path, 'model', 'humanoid.xml')
+model = mujoco_py.load_model_from_path(xml_path)
+sim = mujoco_py.MjSim(model)
+print(sim.data.qpos)
+# [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
+
+sim.step()
+print(sim.data.qpos)
+# [-2.09531783e-19  2.72130735e-05  6.14480786e-22 -3.45474715e-06
+#   7.42993721e-06 -1.40711141e-04 -3.04253586e-04 -2.07559344e-04
+#   8.50646247e-05 -3.45474715e-06  7.42993721e-06 -1.40711141e-04
+#  -3.04253586e-04 -2.07559344e-04 -8.50646247e-05  1.11317030e-04
+#  -7.03465386e-05 -2.22862221e-05 -1.11317030e-04  7.03465386e-05
+#  -2.22862221e-05]
+exit(1)
+
 # Connection paths
 #connectionTraj = traj.makeTraj(down_b_j[-1], up_a_j[0])
 #returnToStart = traj.makeTraj(down_a[-1], up_b[0])
@@ -163,6 +183,16 @@ mark = sg.Sphere(0.01, pose=endpoint, color=(1,0,0))
 #env.add(mark)
 connectionTraj = blendClass.makeTraj(startpoint, endpoint)
 connectionTraj = toEuler(connectionTraj)
+
+
+via = np.asarray([0,40,0,40,0])
+dur = np.asarray([10,10,10,10])
+tb = np.asarray([1,1,1,1,1])*1.5
+res=blendClass.lspb(via,dur,tb)
+plt.plot(res[2],via,'*',res[3],res[4])#,'.')
+
+
+
 
 # Downsample to 50 steps
 down_b = down_b[::3]
