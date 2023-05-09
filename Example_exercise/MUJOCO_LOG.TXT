@@ -1,0 +1,15 @@
+Tue May  9 12:52:12 2023
+WARNING: mju_openResource: unknown file 'franka_emika_panda/scene_pick.xml'
+
+Tue May  9 12:52:35 2023
+WARNING: mju_openResource: unknown file './franka_emika_panda/scene_pick.xml'
+
+Tue May  9 12:52:48 2023
+WARNING: mju_openResource: unknown file 'Example_exercise/franka_emika_panda/scene_pick.xml'
+
+Tue May  9 12:52:56 2023
+WARNING: mju_openResource: unknown file './Example_exercise/franka_emika_panda/scene_pick.xml'
+
+Tue May  9 12:53:19 2023
+WARNING: mju_openResource: unknown file './Example_exercise/franka_emika_panda/scene_pick.xml'
+
