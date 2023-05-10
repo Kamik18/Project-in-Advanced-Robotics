@@ -284,12 +284,10 @@ if __name__ == "__main__":
     try:
         rtde_c = RTDEControl(IP)
         rtde_r = RTDEReceive(IP)
-        rtde_r.stopFileRecording()
     except:
         time.sleep(1.0)
         rtde_c = RTDEControl(IP)
         rtde_r = RTDEReceive(IP)
-        rtde_r.stopFileRecording()
 
     # Set the payload
     rtde_c.setPayload(1.39, [0,0,0.057])
@@ -309,7 +307,7 @@ if __name__ == "__main__":
     '''
     
     # Add exit handler
-    os.system(f"play -nq -t alsa synth {0.5} sine {440}") 
+   # os.system(f"play -nq -t alsa synth {0.5} sine {440}") 
     atexit.register(goodbye, rtde_c, rtde_r, gripper)
 
     # Zero Ft sensor
@@ -339,9 +337,11 @@ if __name__ == "__main__":
     
     #joint_init =  [-1.5207427183734339, -1.7672444782652796, 2.0703089872943323, -1.8949862919249476, -1.6235335508929651, 0.47969508171081543]
     #tcp_init = [-0.11393864957703922, 0.4495333526836168, -0.07185608921857356, 1.5553759729297227, -0.45710594525512366, -0.14085995620748915]
-
+    import winsound
     numere  = 0
-    
+    frequency = 440  # Set Frequency To 2500 Hertz
+    duration = 1000  # Set Duration To 1000 ms == 1 second
+    winsound.Beep(frequency, duration)
     # Main loo
     for i_run in range(1):  
         
