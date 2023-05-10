@@ -8,7 +8,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from pyquaternion import Quaternion
 import roboticstoolbox as rtb
 from scipy.spatial.transform import Rotation as R
-from spatialmath import SE3
+from spatialmath import SE3, SO3
 from spatialmath.base import q2r   
 import swift
 import spatialgeometry as sg
@@ -22,20 +22,26 @@ bSMOTHER   = True
 bSaveFiles = True
 bOriention = True
 bDifferntTime = True
-TRAINING_TIME = 10.0
-DMP_TIME = 10.0
+TRAINING_TIME = 5.0
+DMP_TIME = 5.0
 
 DMP_J  = True
 DMP_TCP = False
 
-J_GOAL_POS_A = np.array([-76.43, -17.78, 48.36, -43.94, 316.89, 104.93])
+DEOM_COLOR = 'r'
+DMP_COLOR = 'b'
+DMP_COLOR_NEW_POS = 'g'
+
+J_GOAL_POS_A = np.array([-79.52, -30.42, 83.56, -56.42, -56.13, 2.97])
 J_GOAL_POS_A = np.deg2rad(J_GOAL_POS_A)
 
-J_GOAL_POS_B = np.array([5.40, -30.95, 42.53, -103.12, 264.42, 78.42])
+J_GOAL_POS_B = np.array([4.49, -18.11, 18.78, -94.43, -88.82, 107.88])
 J_GOAL_POS_B = np.deg2rad(J_GOAL_POS_B)
 
+J_GOAL_POS  = J_GOAL_POS_B
+
 #Up_B/1
-FileName = 'Records/Up_A/11/'
+FileName = 'Records/Up_B/3/'
 sOutPath = 'Python/DMP/Out/'
 
 def euler_from_quaternion(x, y, z, w):
@@ -72,9 +78,22 @@ def quat_to_angle_axis(q):
         q (_type_): quaternion
 
     Returns:
-        _type_: angle axis np.array([x,y,z])
+        np.array: angle axis np.array([x,y,z])
     """
+    angle_axis = np.empty((len(q),3))
+    for i in range(len(q)-1):
+        q_ = q[i]
+        qw= q_[3]
+        angle = 2 * np.arccos(qw)
+        axis_x = q_[0] / np.sqrt(1 - qw**2)
+        axis_y = q_[1] / np.sqrt(1 - qw**2)
+        axis_z = q_[2] / np.sqrt(1 - qw**2)
+        an_axis = [axis_x * angle, axis_y * angle, axis_z * angle]
 
+        angle_axis[i] = an_axis
+
+    return angle_axis
+    
     angle_axis = np.empty((len(q),3))
     for i in range(len(q)-1):
         r = R.from_quat(q[i])
@@ -175,7 +194,7 @@ def read_demo_files(filename, skip_lines=4):
         for i, line in enumerate(f):
             # Check if the line number is a multiple of skip_lines-1
             if i % skip_lines == skip_lines-1:
-                values = tuple(map(float, line.strip()[1:-1].split(',')))
+                values = tuple(map(float, line.split(',')))
                 tuples.append(values)
     demo = np.array(tuples)
 
@@ -183,7 +202,7 @@ def read_demo_files(filename, skip_lines=4):
     with open(filename + "record_j.txt", "r") as f:
         for i, line in enumerate(f):
             if i % skip_lines == skip_lines-1:
-                values = tuple(map(float, line.strip()[1:-1].split(',')))
+                values = tuple(map(float, line.split(',')))
                 tuples_joints.append(values)
 
     demo_joint = np.array(tuples_joints)
@@ -233,7 +252,9 @@ def quaternion_to_np_array(dmp_r):
 if __name__ == '__main__':
     
     demo,demo_joint = read_demo_files(FileName, skip_lines=10)
-    N = 8
+    
+    
+    N = 100
     cs_alpha = -np.log(0.0001)
     if DMP_J:
         
@@ -250,10 +271,19 @@ if __name__ == '__main__':
 
         ## integrate DMP
         q_out, dq_out, ddq_out = dmp_q.rollout(t_train, tau, FX=True)
-        J_GOAL_POS_A = demo_joint[-1].copy()
-        J_GOAL_POS_A = np.pi
-        dmp_q.gp = J_GOAL_POS_A
+       
+        dmp_q.gp = J_GOAL_POS
         q_out_new_pos, dq_out_new_pos, ddq_out_new_pos = dmp_q.rollout(t_train, tau, FX=True)
+
+
+        if bSaveFiles:
+            # Save the result to a file
+            path = FileName.replace("/", "_")
+            path = path.replace("Records", "DMP_Joint")
+            np.savetxt(sOutPath + path + 'smoothing.txt', q_out, delimiter=',', fmt='%1.6f')
+            np.savetxt(sOutPath +  path +'new_goal_pos.txt', q_out_new_pos, delimiter=',', fmt='%1.6f')
+           
+
 
         ## plot DMP
         if bPLOT:
@@ -296,8 +326,6 @@ if __name__ == '__main__':
             axs[5].set_ylabel('q6 (rad)')
             axs[5].legend()
 
-
-
             plt.show()
 
         if bSimulation:
@@ -305,16 +333,20 @@ if __name__ == '__main__':
             env.launch(realtime=True)
 
             UR5 = rtb.models.UR5() 
-            UR5.base = SE3(0.4,0.25,0)
+            UR5.base = SE3(0,0,0)
             UR5.payload(1.390, [0,0, 0.057])
             env.add(UR5)
-
-            box = sg.Cuboid([1,1,-0.10], base=SE3(0,-0.14,-0.05), color=[0,0,1])
+            box = sg.Cuboid([1,1,-0.10], base=SE3(0.3,0.3,-0.05), color=[0,0,1])
             env.add(box)
             
             q_init = demo_joint[0]
             UR5.q = q_init        
             env.step()
+            for q in q_out_new_pos:
+                trans = UR5.fkine(q)
+                add_marker(trans, [0,1,0],True)
+                UR5.q = q
+                env.step(dt=0.02)             
             for q in q_out:
                 trans = UR5.fkine(q)
                 add_marker(trans, [0,0,1],True)
@@ -326,11 +358,6 @@ if __name__ == '__main__':
                 UR5.q = q
                 env.step(dt=0.02)
 
-            for q in q_out_new_pos:
-                trans = UR5.fkine(q)
-                add_marker(trans, [0,1,0],True)
-                UR5.q = q
-                env.step(dt=0.02)
             env.hold()
 
 
@@ -356,9 +383,7 @@ if __name__ == '__main__':
         tau_train = TRAINING_TIME
         t_train = np.arange(0, tau_train, TRAINING_TIME/ len(demo))
         print("tau_train: ", tau_train)
-        
-        N = 7 #Number of basis functions: Increasing the number of basis functions can make the trajectory smoother by allowing for more fine-grained control over the shape of the trajectory.
-        
+
         #Position...
         dmp = PositionDMP(n_bfs=N, alpha=40.0,beta=10.0)
         dmp.p0 = (demo_p[0])
@@ -381,6 +406,8 @@ if __name__ == '__main__':
         #Convert the res of quat to numpy array
         result_quat_array = quaternion_to_np_array(dmp_r)
 
+        
+
         new_goal_pos = demo_p[-1].copy()
         print("pos_goal_pos: ", new_goal_pos)
         
@@ -395,17 +422,24 @@ if __name__ == '__main__':
 
         result_quat_array_new_goal = quaternion_to_np_array(dmp_r_new_goal)
 
-        
+        angle_axis_demo = quat_to_angle_axis(demo_quat_array)
+        angle_axis = quat_to_angle_axis(result_quat_array)
+
+        fig, axs = plt.subplots(6, 1, figsize=(10, 10))
+        axs[0].plot(angle_axis_demo[:, 0], label='DMP-gp', color='red')
+        axs[0].plot(angle_axis[:, 0], label='DMP-gp', color='red')
+
+
         if bSimulation:
             env = swift.Swift()
             env.launch(realtime=True)
 
             UR5 = rtb.models.UR5() 
-            UR5.base = SE3(0.4,0.25,0)
+            UR5.base = SE3(0,0,0)
             UR5.payload(1.390, [0,0, 0.057])
             env.add(UR5)
 
-            box = sg.Cuboid([1,1,-0.10], base=SE3(0,-0.14,-0.05), color=[0,0,1])
+            box = sg.Cuboid([1,1,-0.10], base=SE3(0,0,-0.05), color=[0,0,1])
             env.add(box)
             
             q_init = demo_joint[0]
@@ -417,6 +451,14 @@ if __name__ == '__main__':
             # demo trajectory
             homgenTransList =[]
             homgenTransList = trans_from_pos_quat(demo_p, demo_quat_array, True)  
+
+            for trans in homgenTransList:
+                add_marker(trans, [1,0.5,0.5],True)
+                sol = UR5.ikine_LM(trans, q0=q_init)
+                q_init = sol.q
+                UR5.q = sol.q
+                env.step(dt=0.02)
+            env.hold()
             add_marker(homgenTransList, [1,0,0])
 
 
@@ -431,14 +473,8 @@ if __name__ == '__main__':
             homgenTransList =[]
             homgenTransList = trans_from_pos_quat(dmp_p_new_goal, result_quat_array_new_goal, True)
             add_marker(homgenTransList, [0,1,1])
-            sol = UR5.ikine_LM(homgenTransList[-1], q0=demo_joint[-1])
-            print("q_final: ", sol.q)
-            # for trans in homgenTransList:
-            #     add_marker(trans, [1,0.5,1],True)
-            #     sol = UR5.ikine_LM(trans, q0=q_init)
-            #     q_init = sol.q
-            #     UR5.q = sol.q
-            #     env.step(dt=0.02)
+            
+            
                 
             print("Done")
             
