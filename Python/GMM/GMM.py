@@ -343,35 +343,41 @@ class GMM:
         # Visualize the plots
         plt.show()
 
-    def get_path(self, path: str = "GMM") -> np.ndarray:        
+    def get_path(self, path: str = "") -> np.ndarray:        
         """Get the found path with the standard deviations matrix for each step
 
         Args:
             path (str, optional): The path to return. Defaults to "GMM". Options are "GMM" or "Mean".
         Returns:
             np.ndarray: List of the path
-        """
+        """        
         if path == "GMM":
             path_gmm: dict = {
                 "x": self.__gmm_path[:, 0],
                 "y": self.__gmm_path[:, 1],
                 "z": self.__gmm_path[:, 2],
-                "x_std": data[:, :, 0].std(axis=0),
-                "y_std": data[:, :, 1].std(axis=0),
-                "z_std": data[:, :, 2].std(axis=0)
+                "x_std": self.__data[:, :, 0].std(axis=0),
+                "y_std": self.__data[:, :, 1].std(axis=0),
+                "z_std": self.__data[:, :, 2].std(axis=0)
             }
             return path_gmm
         elif path == "Mean":
             path_mean: dict = {
-                "x": data[:, :, 0].mean(axis=0),
-                "y": data[:, :, 1].mean(axis=0),
-                "z": data[:, :, 2].mean(axis=0),
-                "x_std": data[:, :, 0].std(axis=0),
-                "y_std": data[:, :, 1].std(axis=0),
-                "z_std": data[:, :, 2].std(axis=0)
+                "x": self.__data[:, :, 0].mean(axis=0),
+                "y": self.__data[:, :, 1].mean(axis=0),
+                "z": self.__data[:, :, 2].mean(axis=0),
+                "x_std": self.__data[:, :, 0].std(axis=0),
+                "y_std": self.__data[:, :, 1].std(axis=0),
+                "z_std": self.__data[:, :, 2].std(axis=0)
             }
             return path_mean
-
+        else:
+            # Create a list of standard deviations for each channel
+            covariance: list = []
+            for i in range(self.__data.shape[2]):
+                covariance.append(self.__data[:, :, i].std(axis=0))
+            
+            return (self.__gmm_path, np.array(covariance).T)
 
 if __name__ == "__main__":
     #data:np.ndarray = simulation_data(n_demonstrations=20, n_steps=150)
