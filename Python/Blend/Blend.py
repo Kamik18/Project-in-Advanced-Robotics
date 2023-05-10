@@ -295,7 +295,7 @@ class Blend():
 
     def parab(self, p0, v0, v1, t0, t1, step=1):
         # Generate a series of timestep
-        t = np.arange(t0, t1+step,step)        
+        t = np.arange(t0, t1+step,step)                
         #calculate acceleration
         a = (v1-v0)/(t1-t0)
         #time shift
@@ -306,7 +306,7 @@ class Blend():
         a = np.ones(t.size)*a
         return (t,s,v,a)
 
-    def lspb(self, via,dur,tb):
+    def lspb(self,via,dur,tb):
         """
         https://github.com/novice1011/trajectory-planning
         https://smartech.gatech.edu/bitstream/handle/1853/41948/ParabolicBlends.pdf

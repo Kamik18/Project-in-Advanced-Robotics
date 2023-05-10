@@ -1,53 +1,113 @@
-import roboticstoolbox as rtb
-import swift
-from spatialmath import SE3
-from spatialmath.base import *
-import spatialgeometry as sg
-from cmath import pi, sqrt
-from glob import glob
-import os
+import matplotlib.pyplot as plt
+from matplotlib.widgets import Button
+from scipy.spatial.transform import Rotation   
+
 import numpy as np
 
-def create_4x4_matrix(data):
-    # Create a 4x4 identity matrix
-    mat = np.eye(4)
+PATH :str = "Records/experiments/Blend"
+TIME:int = 0.02
 
-    # Set the top left 3x3 submatrix to the rotation matrix
-    mat[:3, :3] = x2r(data[3:6])
+# Function handler for button and slider
+def on_button_click(event):
+    import signal
+    print("Stop button clicked")
+    exit()
 
-    # Set the rightmost 3x1 column to the translation vector
-    mat[:3, 3] = data[0:3]
+# Create the figure and axis
+fig = plt.figure(constrained_layout=False)
+
+# Scale the plot to the size of the screen
+fig.set_size_inches(plt.figaspect(1))
+
+# Add white space between subplots
+fig.subplots_adjust(hspace=0.75)
+
+# Create subplots for translation and rotation
+ax1 = fig.add_subplot(2, 1, 1)
+ax2 = fig.add_subplot(2, 1, 2)
+
+# Create the button and add it to the plot
+button_ax = plt.axes([0.05, 0.9, 0.03, 0.05])
+button = Button(button_ax, "Stop")
+button.on_clicked(on_button_click)
+
+keys = ["j1", "j2", "j3", "j4", "j5", "j6"]
+
+# Plot the initial empty data
+for i in range(len(keys)):
+    ax1.plot(np.array([0]), np.array([0]), label=str(keys[i] + '[rad/s²]'))
+    ax2.plot(np.array([0]), np.array([0]), label=str(keys[i] + '[rad/s]'))
     
-    return SE3(mat)
+# Set the legend and x labels
+for ax in [ax1, ax2]:
+    ax.legend(loc="center left", bbox_to_anchor=(1.05, 0.5))
+    ax.set_xlabel("Time (ms)")
 
-# init environtment
-env = swift.Swift()
-env.launch(realtime=True)
+# Set the y labels
+ax1.set_ylabel("Acceleration (rad/s²)")
+ax2.set_ylabel("Velocity (rad/s)")
 
-# Create an obstacles
-box = sg.Cuboid([2,2,-0.1], pose=SE3(0,0,0))
-env.add(box)
+# Set the title
+ax1.set_title("Acceleration")
+ax2.set_title("Velocity")
 
-# load robot 
-UR5 = rtb.models.UR5()
-env.add(UR5)
+# Open the text file for reading
+with open(f"{PATH}/acc.txt", "r") as file:
+    # Read the lines of data from the file
+    lines = file.readlines()
+    x_data = np.array([0])
+    ax_data:dict = {
+        "j1": np.array([0]),
+        "j2": np.array([0]),
+        "j3": np.array([0]),
+        "j4": np.array([0]),
+        "j5": np.array([0]),
+        "j6": np.array([0])
+    }
 
-os.path.abspath(os.getcwd())
-# load path from txt file
-tcp_file = glob("./Records/Pick_A_1/Record_tcp.txt")
-with open(tcp_file[0]) as f:
-    data = f.readlines()
+    for line in lines:
+        # Remove '[' and ']' from the line
+        line = line.replace("[", "").replace("]", "")
+        # Split the line into x and y values
+        values = [float(val) for val in line.split(',')]
+        x = x_data[-1] + TIME
+        # Add the new data to the arrays
+        x_data = np.append(x_data, x)
+        for i in range(len(keys)):
+            ax_data[keys[i]] = np.append(ax_data[keys[i]], values[i])
+    for i in range(len(keys)):
+        ax1.lines[i].set_data(x_data, ax_data[keys[i]])
 
-    for i in range(len(data)):
-        data[i] = data[i].split(',')
-        data[i] = [float(j) for j in data[i]]
+# Open the text file for reading
+with open(f"{PATH}/vel.txt", "r") as file:
+    # Read the lines of data from the file
+    lines = file.readlines()
+    x_data = np.array([0])
+    ax_data:dict = {
+        "j1": np.array([0]),
+        "j2": np.array([0]),
+        "j3": np.array([0]),
+        "j4": np.array([0]),
+        "j5": np.array([0]),
+        "j6": np.array([0])
+    }
+
+    for line in lines:
+        # Remove '[' and ']' from the line
+        line = line.replace("[", "").replace("]", "")
+        # Split the line into x and y values
+        values = [float(val) for val in line.split(',')]
+        x = x_data[-1] + TIME
+        # Add the new data to the arrays
+        x_data = np.append(x_data, x)
+        for i in range(len(keys)):
+            ax_data[keys[i]] = np.append(ax_data[keys[i]], values[i])
+    for i in range(len(keys)):
+        ax2.lines[i].set_data(x_data, ax_data[keys[i]])
 
 
-UR5.q = UR5.ik_lm_wampler(create_4x4_matrix(data[0]), ilimit=500, slimit=500, q0=[-np.pi / 2, -np.pi / 2, 0, -np.pi / 2, np.pi / 2, 0])[0]
-env.step()
+for ax in (ax1, ax2):
+    ax.relim()
+    ax.autoscale_view()
 
-for i in range(len(data)):
-    UR5.q = UR5.ik_lm_wampler(create_4x4_matrix(data[i*20]), ilimit=500, slimit=500, q0=UR5.q)[0]
-    env.step()
-
-
+plt.show()

@@ -1,5 +1,5 @@
-from gmr.utils import check_random_state
-from gmr import gmm, kmeansplusplus_initialization, covariance_initialization, MVN
+from Python.GMM.gmr.utils import check_random_state
+from Python.GMM.gmr import gmm, kmeansplusplus_initialization, covariance_initialization, MVN
 from itertools import cycle
 from sklearn.mixture import BayesianGaussianMixture
 from matplotlib.patches import Ellipse
@@ -72,7 +72,7 @@ def fetch_data_from_records(path: str, skip_size: int = 5) -> np.ndarray:
 
     # Fetch the files
     files: list = glob(pathname=path, recursive=True)
-
+    
     # List of demonstrations
     demonstrations: list = []
 

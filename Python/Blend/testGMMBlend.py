@@ -11,6 +11,9 @@ from rtde_receive import RTDEReceiveInterface as RTDEReceive
 import time
 from Python.Gripper.RobotiqGripper import RobotiqGripper
 import Python.GMM.GMM as GMM
+import threading
+
+RUNNING: bool = True
 
 def fetch_data_from_records(path: str) -> np.ndarray:
     """Fetch the demonstration data from the records
@@ -111,57 +114,151 @@ def adddotsjoints(traj, colorref):
         mark = Sphere(0.01, pose=q, color=colorref)
         env.add(mark)
         UR5.q = joint_pos
-        env.step()
-# TCP
-#up_b: np.ndarray = fetch_data_from_records("./Python/Blend/Up_B_Tcp.txt")
-#up_b: np.ndarray = np.loadtxt("./Records/Up_B/1/record_tcp.txt", delimiter=',', skiprows=0)
-#up_b = up_b[::10]
-#down_b: np.ndarray = fetch_data_from_records("./Python/Blend/Down_B_Tcp.txt")
-#down_b: np.ndarray = np.loadtxt("./Records/Down_B/1/record_tcp.txt", delimiter=',', skiprows=0)
-#down_b = down_b[::10]
-#down_a: np.ndarray = fetch_data_from_records("./Python/Blend/Down_A_Tcp.txt")
-#up_a: np.ndarray = fetch_data_from_records("./Python/Blend/Up_A_Tcp.txt")
-#up_a: np.ndarray = np.loadtxt("./Records/Up_A/1/record_tcp.txt", delimiter=',', skiprows=0)
-#up_a = up_a[::10]
-# Joints
-# GMM
-data: np.ndarray = GMM.fetch_data_from_records(path="./Records/Up_B/**/Record_j.txt", skip_size=10)
-GMM_translation: GMM = GMM.GMM(data=data, n_components=8)
-up_b_j, covariances = GMM_translation.get_path()
+        env.step(0.1)
 
-data: np.ndarray = GMM.fetch_data_from_records(path="./Records/Down_B/**/Record_j.txt", skip_size=10)
-GMM_translation: GMM = GMM.GMM(data=data, n_components=8)
-down_b_j, covariances = GMM_translation.get_path()
+def getData(method: str = "") -> tuple:
+    """Get the data from the records
 
-data: np.ndarray = GMM.fetch_data_from_records(path="./Records/Up_A/**/Record_j.txt", skip_size=10)
-GMM_translation: GMM = GMM.GMM(data=data, n_components=8)
-up_a_j, covariances = GMM_translation.get_path()
+    Args:
+        method (str): Method to use for fetching the data. Options: "", "DMP", "GMM"
 
-data: np.ndarray = GMM.fetch_data_from_records(path="./Records/Down_A/**/Record_j.txt", skip_size=10)
-GMM_translation: GMM = GMM.GMM(data=data, n_components=8)
-down_a_j, covariances = GMM_translation.get_path()
+    Returns:
+        tuple: Tuple containing the data for the four paths
+    """
+    if method == "DMP":
+        pass
+    elif method == "GMM":
+        data: np.ndarray = GMM.fetch_data_from_records(path="Records/Up_B/**/record_j.txt", skip_size=10)
+        GMM_translation: GMM = GMM.GMM(data=data, n_components=8)
+        up_b_j, covariances = GMM_translation.get_path()
 
-# Original
-up_b_j: np.ndarray = np.loadtxt("./Records/Up_B/1/record_j.txt", delimiter=',', skiprows=0)
-down_b_j: np.ndarray = np.loadtxt("./Records/Down_B/1/record_j.txt", delimiter=',', skiprows=0)
-up_a_j: np.ndarray = np.loadtxt("./Records/Up_A/1/record_j.txt", delimiter=',', skiprows=0)
-down_a_j: np.ndarray = np.loadtxt("./Records/Down_A/1/record_j.txt", delimiter=',', skiprows=0)
+        data: np.ndarray = GMM.fetch_data_from_records(path="Records/Down_B/**/record_j.txt", skip_size=10)
+        GMM_translation: GMM = GMM.GMM(data=data, n_components=8)
+        down_b_j, covariances = GMM_translation.get_path()
 
-#up_b_v: np.ndarray = np.loadtxt("./Records/Up_B/1/velocity.txt", delimiter=',', skiprows=0)
-#down_b_v: np.ndarray = np.loadtxt("./Records/Down_B/1/velocity.txt", delimiter=',', skiprows=0)
-#up_a_v: np.ndarray = np.loadtxt("./Records/Up_A/1/velocity.txt", delimiter=',', skiprows=0)
-#down_a_v: np.ndarray = np.loadtxt("./Records/Down_A/1/velocity.txt", delimiter=',', skiprows=0)
+        data: np.ndarray = GMM.fetch_data_from_records(path="Records/Up_A/**/record_j.txt", skip_size=10)
+        GMM_translation: GMM = GMM.GMM(data=data, n_components=8)
+        up_a_j, covariances = GMM_translation.get_path()
 
-# Down sample
-up_b_j = up_b_j[::50]
-down_b_j = down_b_j[::50]
-up_a_j = up_a_j[::50]
-down_a_j = down_a_j[::50]
+        data: np.ndarray = GMM.fetch_data_from_records(path="Records/Down_A/**/record_j.txt", skip_size=10)
+        GMM_translation: GMM = GMM.GMM(data=data, n_components=8)
+        down_a_j, covariances = GMM_translation.get_path()
+    else:
+        # Original
+        up_b_j: np.ndarray = np.loadtxt("./Records/Up_B/1/record_j.txt", delimiter=',', skiprows=0)
+        down_b_j: np.ndarray = np.loadtxt("./Records/Down_B/1/record_j.txt", delimiter=',', skiprows=0)
+        up_a_j: np.ndarray = np.loadtxt("./Records/Up_A/1/record_j.txt", delimiter=',', skiprows=0)
+        down_a_j: np.ndarray = np.loadtxt("./Records/Down_A/1/record_j.txt", delimiter=',', skiprows=0)
+        # Down sample
+        up_b_j = up_b_j[::50]
+        down_b_j = down_b_j[::50]
+        up_a_j = up_a_j[::50]
+        down_a_j = down_a_j[::50]
+    return up_b_j, down_b_j, up_a_j, down_a_j
+
+def blendPath(plot: bool = False):
+    # Connection paths
+    home_to_start = blendClass.makeTraj(q0, up_b_j[0])
+    return_to_start = blendClass.makeTraj(down_b_j[-1], q0)
+
+    move_to_pickup = blendClass.blendJointTraj(home_to_start.q, up_b_j, 5, plot=False)
+    blendedPath2 = blendClass.blendJointTraj2(down_b_j, up_a_j, 
+                                            np.array([down_b_j[-20], down_b_j[-1], up_a_j[0], up_a_j[20]]),
+                                            5, plot=False)
+    blendedPath3 = blendClass.blendJointTraj2(down_a_j, up_b_j, 
+                                            np.array([down_a_j[-20], down_a_j[-1], up_b_j[0],up_b_j[20]]), 
+                                            5, plot=False)
+    return_to_home = blendClass.blendJointTraj(down_b_j, return_to_start.q, 5, plot=False)
+
+    def remove_near_points(points:np.ndarray, start:int = 10, end:int = 10) -> np.ndarray:
+        if len(points) < (start + end):
+            return points
+
+        MIN_DIST = 0.01
+        temp_points:list = []
+        for i in range(start):
+            temp_points.append(points[i])
+
+        skipped:int = 0
+        for i in range(start, len(points) - end):
+            # discard point if distance to previous is too close
+            if (np.linalg.norm(temp_points[-1] - points[i]) > MIN_DIST) or (skipped > 5):
+                temp_points.append(points[i])
+                skipped = 0
+            else:
+                skipped += 1
+
+        # Append the last 
+        for i in range(len(points) - end, len(points)):
+            temp_points.append(points[i])
+        return np.array(temp_points)
+
+    move_to_pickup = remove_near_points(move_to_pickup, start=1)
+    blendedPath2 = remove_near_points(blendedPath2)
+    blendedPath3 = remove_near_points(blendedPath3, start=30)
+    return_to_home = remove_near_points(return_to_home, end=1)
+
+    move_insert_return = np.concatenate([blendedPath2, blendedPath3])
+
+    if plot:
+        adddotsjoints(move_to_pickup,(1,0,0))
+        adddotsjoints(move_insert_return,(0,1,0))
+        adddotsjoints(return_to_home,(1,0,0))
+    
+    return move_to_pickup, move_insert_return, return_to_home
+
+def oriPath(plot : bool = False):
+    home_to_start = blendClass.makeTraj(q0, up_b_j[0])
+    return_to_start = blendClass.makeTraj(down_b_j[-1], q0)
+    connection_b_a = blendClass.makeTraj(down_b_j[-1], up_a_j[0])
+    connection_a_b = blendClass.makeTraj(down_a_j[-1], up_b_j[0])
+    # Setup move trajectories
+    move_to_pickup = np.concatenate([home_to_start.q, up_b_j])
+    move_insert_return = np.concatenate([down_b_j, connection_b_a.q, up_a_j, down_a_j, connection_a_b.q, up_b_j])
+    return_to_home = np.concatenate([down_b_j, return_to_start.q])
+
+    if plot:
+        adddotsjoints(move_to_pickup,(0,0,1))
+        adddotsjoints(move_insert_return,(0,1,0))
+        adddotsjoints(return_to_home,(1,0,0))
+    
+    return move_to_pickup, move_insert_return, return_to_home
+
+def log():
+    global RUNNING
+
+    
+    while RUNNING:
+        start_time = time.time()
+
+        # Read joint acceleration, velocity
+        acc = rtde_r.getTargetQdd()
+        vel = rtde_r.getActualQd()
+
+        # Append to file
+        with open("./Records/experiments/acc.txt", "a") as f:
+            f.write(f"{acc}\n")
+        with open("./Records/experiments/vel.txt", "a") as f:
+            f.write(f"{vel}\n")
+        
+        # Wait for timestep
+        delta_time = time.time() - start_time
+        if delta_time < 0.02:
+            time.sleep(0.02 - delta_time)
+        else:
+            print(f"Warning: delta_time: {delta_time}")
+            exit(1)
+
+
+# up_b_j, down_b_j, up_a_j, down_a_j = getData("DMP")
+# up_b_j, down_b_j, up_a_j, down_a_j = getData("GMM")
+up_b_j, down_b_j, up_a_j, down_a_j = getData()
+
 
 box = Cuboid([1,1,-0.10], base=SE3(0.30,0.34,-0.05), color=[0,0,1])
 UR5 = rtb.models.UR5()
 blendClass = Blend(UR5=UR5, box=box)
-q0 =  np.array([0, -np.pi / 2, np.pi / 2, -np.pi / 2, -np.pi / 2, 0])
+q0 =  np.array([0, -np.pi / 2, np.pi / 2, -np.pi / 2, -np.pi / 2, -np.pi / 2])
 UR5.q = q0
 
 swiftEnv = True
@@ -175,76 +272,36 @@ if swiftEnv:
     # Move the robot to the start position
     env.step()
 
-# Connection paths
-home_to_start = blendClass.makeTraj(q0, up_b_j[0])
-connection_b_a = blendClass.makeTraj(down_b_j[-1], up_a_j[0])
-connection_a_b = blendClass.makeTraj(down_a_j[-1], up_b_j[0])
-return_to_start = blendClass.makeTraj(down_b_j[-1], q0)
+#move_to_pickup, move_insert_return, return_to_home = oriPath(swiftEnv)
+move_to_pickup, move_insert_return, return_to_home = blendPath(swiftEnv)
 
-blendedPath1 = blendClass.blendJointTraj(home_to_start.q, up_b_j, 5, plot=False)
-#blendedPath2 = blendClass.blendJointTraj(down_b_j, connection_b_a.q, 5, plot=False)
-blendedPath3 = blendClass.blendJointTraj2(down_b_j, up_a_j, np.array([down_b_j[-20], connection_b_a.q[0,:], connection_b_a.q[-1,:],up_a_j[20]]), 5, plot=False)
-adddotsjoints(blendedPath3,(0,0,1))
-exit(1)
-blendedPath4 = blendClass.blendJointTraj(down_a_j, connection_a_b.q, 5, plot=False)
-blendedPath4 = blendClass.blendJointTraj(blendedPath4, up_b_j, 5, plot=False)
-blendedPath5 = blendClass.blendJointTraj(down_b_j, return_to_start.q, 5, plot=False)
-#adddotsjoints(home_to_start.q,(0,0,1))
-#adddotsjoints(up_b_j,(0,0,1))
-#adddotsjoints(down_b_j,(0,0,1))
-#adddotsjoints(connection_b_a.q,(0,0,1))
-adddotsjoints(blendedPath1,(1,0,0))
-adddotsjoints(blendedPath2,(0,1,0))
-adddotsjoints(blendedPath3,(0,0,1))
-adddotsjoints(blendedPath4,(1,0,1))
-adddotsjoints(blendedPath5,(1,1,0))
-exit(1)
-
-
-#combined_traj = np.concatenate([home_to_start.q, up_b_j, down_b_j, connectionTraj.q, return_to_start.q])
-#combined_traj = np.concatenate([home_to_start.q, up_b_j, down_b_j, connectionTraj.q, up_a_j, down_a_j, return_to_start.q])
-#combined_traj_v = np.concatenate([home_to_start.qd, up_b_v, down_b_v, connectionTraj.qd, up_a_v, down_a_v, return_to_start.qd])
-
-# Setup move trajectories
-move_to_pickup = np.concatenate([home_to_start.q, up_b_j])
-move_insert_return = np.concatenate([down_b_j, connection_b_a.q, up_a_j, down_a_j, connection_a_b.q, up_b_j])
-return_to_home = np.concatenate([down_b_j, return_to_start.q])
-
-#adddotsjoints(move_to_pickup,(0,0,1))
-#adddotsjoints(move_insert_return,(0,1,0))
-#adddotsjoints(return_to_home,(1,0,0))
-
-#adddotsjoints(home_to_start.q,(0,0,1))
-#adddotsjoints(up_b_j,(0,1,0))
-#adddotsjoints(down_b_j,(1,0,0))
-#adddotsjoints(connectionTraj.q,(1,0,1))
-#adddotsjoints(up_a_j,(0,1,1))
-#adddotsjoints(down_a_j,(1,1,1))
-#adddotsjoints(return_to_start.q,(1,1,0))
-#adddotsjoints(combined_traj,(1,0,0))
 exit(1)
 #run robot
 IP = "192.168.1.131"
 rtde_c = RTDEControl(IP)
 rtde_r = RTDEReceive(IP)
+print("Starting RTDE test script...")
+VELOCITY = 0.5
+ACCELERATION = 0.2
+BLEND = 0
+
+rtde_c.moveJ(q0, VELOCITY, ACCELERATION, False)
+rtde_c.speedStop()
+time.sleep(1)
 
 gripper = RobotiqGripper()
 gripper.connect(IP, 63352)
 gripper.activate()
 gripper.move_and_wait_for_pos(position=0, speed=5, force=25)
 
-print("Starting RTDE test script...")
-# Target in the robot base
-VELOCITY = 0.5
-ACCELERATION = 0.2
-BLEND = 0
+# Thread for force plot
+log_thread = threading.Thread(target=log)
+log_thread.start()
 
 # Move asynchronously in joint space to new_q, we specify asynchronous behavior by setting the async parameter to
 # 'True'. Try to set the async parameter to 'False' to observe a default synchronous movement, which cannot be stopped
 # by the stopJ function due to the blocking behaviour.
-rtde_c.moveJ(q0, VELOCITY, ACCELERATION, False)
-rtde_c.speedStop()
-time.sleep(1)
+
 
 speed = 0.1
 for joint in move_to_pickup:
@@ -268,6 +325,7 @@ for joint in return_to_home:
     time.sleep(speed)
 
 rtde_c.speedStop()
+RUNNING = False
 time.sleep(0.2)
 print("Stopped movement")
 rtde_c.stopScript()
