@@ -1,5 +1,5 @@
 from gmr.utils import check_random_state
-from gmr import gmm, kmeansplusplus_initialization, covariance_initialization
+from gmr import gmm, kmeansplusplus_initialization, covariance_initialization, MVN
 from itertools import cycle
 from sklearn.mixture import BayesianGaussianMixture
 from matplotlib.patches import Ellipse
@@ -95,7 +95,8 @@ def fetch_data_from_records(path: str, skip_size: int = 5) -> np.ndarray:
                 if len(data[i]) != 6:
                     print(f"Error: {file}, line: {i}")
                     continue
-                
+
+                '''
                 if i > 0:
                     for j in range(3, 6):
                         if abs(data[i][j] - data[i-1][j]) > 5:
@@ -107,7 +108,7 @@ def fetch_data_from_records(path: str, skip_size: int = 5) -> np.ndarray:
                         delta = abs(data[i][j] - data[i-1][j])
                         if delta > max_delta:
                             max_delta = delta
-
+                '''
             if max_delta > np.pi:
                 print(f"Error: {file}, max delta: {max_delta}")
                 continue
@@ -137,7 +138,7 @@ class GMM:
     """GMM path
     """
 
-    def __init__(self, data: np.array, n_components:int = 8) -> None:
+    def __init__(self, data: np.array, n_components: int = 8) -> None:
         """Initialize the dataset
 
         Args:
@@ -174,29 +175,42 @@ class GMM:
         self.__gmm_path: np.ndarray = np.array(means_over_time)
 
     def plot(self, visualize: str = "path") -> None:
-        path_gmm: dict = {
-            "x": self.__gmm_path[:, 0],
-            "y": self.__gmm_path[:, 1],
-            "z": self.__gmm_path[:, 2],
-            "x_std": data[:, :, 0].std(axis=0),
-            "y_std": data[:, :, 1].std(axis=0),
-            "z_std": data[:, :, 2].std(axis=0)
-        }
-
-        path_mean: dict = {
-            "x": data[:, :, 0].mean(axis=0),
-            "y": data[:, :, 1].mean(axis=0),
-            "z": data[:, :, 2].mean(axis=0),
-            "x_std": data[:, :, 0].std(axis=0),
-            "y_std": data[:, :, 1].std(axis=0),
-            "z_std": data[:, :, 2].std(axis=0)
-        }
+        path_gmm: dict = self.get_path(path="GMM")
+        path_mean: dict = self.get_path(path="Mean")
 
         # Plot the data
         if visualize == "path":
             fig_paths = plt.figure(figsize=(10, 5))
             ax = plt.axes(projection="3d")
-            
+
+            # Plot the covariance ellipses for the GMM path
+            for i in range(len(path_gmm["x"])):
+                from scipy import interpolate
+
+                # Define the points
+                x_min: float = path_gmm["x"][i] - path_gmm["x_std"][i]
+                x_max: float = path_gmm["x"][i] + path_gmm["x_std"][i]
+                y_min: float = path_gmm["y"][i] - path_gmm["y_std"][i]
+                y_max: float = path_gmm["y"][i] + path_gmm["y_std"][i]
+
+                # Create the pairs
+                pair: np.ndarray = np.array([
+                    [x_min, y_min],
+                    [x_max, y_min],
+                    [x_max, y_max],
+                    [x_min, y_max]
+                ])
+
+                # Extract the x and y coordinates
+                x = pair[:, 0]
+                y = pair[:, 1]
+
+                tck, u = interpolate.splprep([x, y], s=0, per=True)
+                basic_form = interpolate.splev(np.linspace(0, 1, 10), tck)
+                ax.plot(basic_form[0], basic_form[1],
+                        path_gmm["z"][i], color='lime', lw=1, alpha=0.1)
+
+            '''
             # Add the measurements
             for i in range(len(self.__data)):
                 set: dict = {
@@ -207,12 +221,15 @@ class GMM:
                 ax.plot3D(set["x"], set["y"], set["z"],
                           color="black", alpha=0.25)
 
-            # Add the GMM path
-            ax.plot3D(path_gmm["x"], path_gmm["y"],
-                      path_gmm["z"], color="red", alpha=1.0, label="GMM")
             # Mean path
             ax.plot3D(path_mean["x"], path_mean["y"],
                       path_mean["z"], color="green", alpha=1.0, label="Mean")
+            '''
+
+            # Add the GMM path
+            ax.plot3D(path_gmm["x"], path_gmm["y"],
+                      path_gmm["z"], color="red", alpha=1.0, label="GMM")
+
             ax.set_title(f"GMM with {len(self.__data)} demonstrations")
             ax.set_xlabel("x")
             ax.set_ylabel("y")
@@ -261,7 +278,8 @@ class GMM:
             for factor in np.linspace(0.5, 4.0, 4):
                 new_gmm = gmm(
                     n_components=len(self.gmm.means), priors=self.gmm.priors,
-                    means=self.gmm.means[:,1:], covariances=self.gmm.covariances[:, 1:, 1:],
+                    means=self.gmm.means[:,
+                                         1:], covariances=self.gmm.covariances[:, 1:, 1:],
                     random_state=self.gmm.random_state)
                 for mean, (angle, width, height) in new_gmm.to_ellipses(factor):
                     ell = Ellipse(xy=mean, width=width, height=height,
@@ -273,6 +291,7 @@ class GMM:
             ax.set_xlabel("x [m]")
             ax.set_ylabel("z [m]")
             ax.legend(loc="upper right")
+
         elif visualize == "tolerances":
             # Plot the tolerances
             fig_tolerances = plt.figure(figsize=(10, 5))
@@ -306,29 +325,41 @@ class GMM:
         # Visualize the plots
         plt.show()
 
-    def get_path(self, path: str = "GMM") -> np.ndarray:
+    def get_path(self, path: str = "GMM") -> np.ndarray:        
         """Get the found path with the standard deviations matrix for each step
 
+        Args:
+            path (str, optional): The path to return. Defaults to "GMM". Options are "GMM" or "Mean".
         Returns:
             np.ndarray: List of the path
         """
         if path == "GMM":
-            return self.__gmm_path
+            path_gmm: dict = {
+                "x": self.__gmm_path[:, 0],
+                "y": self.__gmm_path[:, 1],
+                "z": self.__gmm_path[:, 2],
+                "x_std": data[:, :, 0].std(axis=0),
+                "y_std": data[:, :, 1].std(axis=0),
+                "z_std": data[:, :, 2].std(axis=0)
+            }
+            return path_gmm
         elif path == "Mean":
-            # Create the mean path
-            mean: np.ndarray = np.zeros(self.__data.shape)
-
-            # Mean each degree of freedom
-            for axis in range(self.__data.shape[2]):
-                mean[:, :, axis] = self.__data[:, :, axis].mean(axis=0)
-
-            return mean
+            path_mean: dict = {
+                "x": data[:, :, 0].mean(axis=0),
+                "y": data[:, :, 1].mean(axis=0),
+                "z": data[:, :, 2].mean(axis=0),
+                "x_std": data[:, :, 0].std(axis=0),
+                "y_std": data[:, :, 1].std(axis=0),
+                "z_std": data[:, :, 2].std(axis=0)
+            }
+            return path_mean
 
 
 if __name__ == "__main__":
     #data:np.ndarray = simulation_data(n_demonstrations=20, n_steps=150)
 
-    data: np.ndarray = fetch_data_from_records(path="./Records/Up_A/**/Record_tcp.txt", skip_size=10) # From up to down
+    data: np.ndarray = fetch_data_from_records(
+        path="./Records/Up_A/**/Record_tcp.txt", skip_size=10)  # From up to down
     #data: np.ndarray = fetch_data_from_records(path="./Records/Down_A/**/Record_tcp.txt", skip_size=10)
     #data: np.ndarray = fetch_data_from_records(path="./Records/Up_B/**/Record_tcp.txt", skip_size=10)
     #data: np.ndarray = fetch_data_from_records(path="./Records/Down_B/**/Record_tcp.txt", skip_size=10)
@@ -340,10 +371,9 @@ if __name__ == "__main__":
     data[:, :, 2] = temp_data    
     """
 
-    GMM_translation: GMM = GMM(data=data, n_components= 4)
+    GMM_translation: GMM = GMM(data=data, n_components=4)
     GMM_translation.plot("path")
-    #GMM_translation.plot("path2d")
-    #GMM_translation.plot("covariance")
-    #GMM_translation.plot("tolerances")
+    # GMM_translation.plot("path2d")
+    # GMM_translation.plot("covariance")
+    # GMM_translation.plot("tolerances")
     path_translation: np.ndarray = GMM_translation.get_path()
-
