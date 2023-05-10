@@ -2,15 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from spatialmath.base import x2r, r2x
 import swift
-import spatialgeometry as sg
+from spatialgeometry import Sphere, Cuboid
 import roboticstoolbox as rtb
 from spatialmath import SE3
 from Blend import Blend
-import time
-import math
-import mujoco
-import os
-
 
 def fetch_data_from_records(path: str) -> np.ndarray:
     """Fetch the demonstration data from the records
@@ -102,40 +97,51 @@ def toEuler(arrSE3):
 
 def adddotstcp(traj, colorref):
     for tcp in traj:
-        mark = sg.Sphere(0.01, pose=SE3(tcp[:3]), color=colorref)
+        mark = Sphere(0.01, pose=SE3(tcp[:3]), color=colorref)
         env.add(mark)
 
 def adddotsjoints(traj, colorref):
     for joint_pos in traj:
         q = UR5.fkine(joint_pos)
-        mark = sg.Sphere(0.01, pose=q, color=colorref)
+        mark = Sphere(0.01, pose=q, color=colorref)
         env.add(mark)
+        UR5.q = joint_pos
+        env.step()
 # TCP
 #up_b: np.ndarray = fetch_data_from_records("./Python/Blend/Up_B_Tcp.txt")
 #up_b: np.ndarray = np.loadtxt("./Records/Up_B/1/record_tcp.txt", delimiter=',', skiprows=0)
 #up_b = up_b[::10]
-down_b: np.ndarray = fetch_data_from_records("./Python/Blend/Down_B_Tcp.txt")
+#down_b: np.ndarray = fetch_data_from_records("./Python/Blend/Down_B_Tcp.txt")
 #down_b: np.ndarray = np.loadtxt("./Records/Down_B/1/record_tcp.txt", delimiter=',', skiprows=0)
 #down_b = down_b[::10]
 #down_a: np.ndarray = fetch_data_from_records("./Python/Blend/Down_A_Tcp.txt")
-up_a: np.ndarray = fetch_data_from_records("./Python/Blend/Up_A_Tcp.txt")
+#up_a: np.ndarray = fetch_data_from_records("./Python/Blend/Up_A_Tcp.txt")
 #up_a: np.ndarray = np.loadtxt("./Records/Up_A/1/record_tcp.txt", delimiter=',', skiprows=0)
 #up_a = up_a[::10]
 # Joints
-up_b_j: np.ndarray = fetch_data_from_records("./Python/Blend/Up_B_j.txt")
-#up_b_j: np.ndarray = np.loadtxt("./Records/Up_B/1/record_j.txt", delimiter=',', skiprows=0)
-down_b_j: np.ndarray = fetch_data_from_records("./Python/Blend/Down_B_j.txt")
+# GMM
+#up_b_j: np.ndarray = fetch_data_from_records("./Python/Blend/Up_B_j.txt")
+#down_b_j: np.ndarray = fetch_data_from_records("./Python/Blend/Down_B_j.txt")
 #down_a_j: np.ndarray = fetch_data_from_records("./Python/Blend/Down_A_j.txt")
-up_a_j: np.ndarray = fetch_data_from_records("./Python/Blend/Up_A_j.txt")
+#up_a_j: np.ndarray = fetch_data_from_records("./Python/Blend/Up_A_j.txt")
+# Original
+up_b_j: np.ndarray = np.loadtxt("./Records/Up_B/1/record_j.txt", delimiter=',', skiprows=0)
+down_b_j: np.ndarray = np.loadtxt("./Records/Down_B/1/record_j.txt", delimiter=',', skiprows=0)
+up_a_j: np.ndarray = np.loadtxt("./Records/Up_A/1/record_j.txt", delimiter=',', skiprows=0)
+down_a_j: np.ndarray = np.loadtxt("./Records/Down_A/1/record_j.txt", delimiter=',', skiprows=0)
 
-
-box = sg.Cuboid([2,2,-0.1], pose=SE3(0,0,0))
+#downsample
+up_b_j = up_b_j[::10]
+down_b_j = up_b_j[::10]
+up_a_j = up_b_j[::10]
+down_a_j = up_b_j[::10]
+box = Cuboid([2,2,-0.1], pose=SE3(0,0,0))
 UR5 = rtb.models.UR5()
 blendClass = Blend(UR5=UR5, box=box)
-q0 =  [-np.pi / 2, -np.pi / 2, 0, -np.pi / 2, np.pi / 2, 0]
+q0 =  np.array([0, -np.pi / 2, np.pi / 2, -np.pi / 2, -np.pi / 2, 0])
 UR5.q = q0
 
-swiftEnv = False
+swiftEnv = True
 if swiftEnv:
     env = swift.Swift()
     env.launch(realtime=True)
@@ -146,50 +152,41 @@ if swiftEnv:
     # Move the robot to the start position
     env.step()
 
-
-model = mujoco.MjModel.from_xml_path("./Example_exercise/universal_robots_ur5e/scene.xml")
-data = mujoco.MjData(model)
-cam = mujoco.MjvCamera()
-cam.type = mujoco.mjtCamera.mjCAMERA_FIXED
-cam.fixedcamid = 0
-scene = mujoco.MjvScene(model, maxgeom=10000)
-run = True
-exit(1)
-
 # Connection paths
-#connectionTraj = traj.makeTraj(down_b_j[-1], up_a_j[0])
-#returnToStart = traj.makeTraj(down_a[-1], up_b[0])
+home_to_start = blendClass.makeTraj(q0, up_b_j[0])
+connectionTraj = blendClass.makeTraj(down_b_j[-1], up_a_j[0])
+return_to_start = blendClass.makeTraj(down_a_j[-1], q0)
+
+adddotsjoints(home_to_start.q,(0,0,1))
+adddotsjoints(up_b_j,(0,1,0))
+adddotsjoints(down_b_j,(1,0,0))
+adddotsjoints(connectionTraj.q,(1,0,1))
+adddotsjoints(up_a_j,(0,1,1))
+adddotsjoints(down_a_j,(1,1,1))
+adddotsjoints(return_to_start.q,(1,1,0))
+
+exit(1)
 
 ######################## TODO ########################
 # 1. fix python intellisense somehow
 # 2. Find out how to combine the blends new paths that are created
-# 3. Add rotation
 # 4. Try with joint angles
 # 5. Simulate with Swift
 
 startpoint = create_4x4_matrix(down_b[-1])#SE3(down_b[-1,:3])
 endpoint = create_4x4_matrix(up_a[0])#SE3(up_a[0,:3])
-mark = sg.Sphere(0.01, pose=startpoint, color=(0,1,0))
+mark = Sphere(0.01, pose=startpoint, color=(0,1,0))
 #env.add(mark)
-mark = sg.Sphere(0.01, pose=endpoint, color=(1,0,0))
+mark = Sphere(0.01, pose=endpoint, color=(1,0,0))
 #env.add(mark)
 connectionTraj = blendClass.makeTraj(startpoint, endpoint)
 connectionTraj = toEuler(connectionTraj)
 
 
-via = np.asarray([0,40,0,40,0])
-dur = np.asarray([10,10,10,10])
-tb = np.asarray([1,1,1,1,1])*1.5
-res=blendClass.lspb(via,dur,tb)
-plt.plot(res[2],via,'*',res[3],res[4])#,'.')
-
-
-
-
 # Downsample to 50 steps
-down_b = down_b[::3]
+#down_b = down_b[::3]
 
-blendedPath1 = blendClass.blendTraj(down_b, connectionTraj, 20, bsize1=10, bsize2=10, plot=True)
+#blendedPath1 = blendClass.blendTraj(down_b, connectionTraj, 20, bsize1=10, bsize2=10, plot=True)
 exit(1)
 blendedPath2 = blendClass.blendTraj(blendedPath1, up_a, 20, bsize1=10, bsize2=20, plot=True)
 
