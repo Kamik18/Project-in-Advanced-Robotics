@@ -1,8 +1,8 @@
 import numpy as np
 class DMP:
-    def __init__():
-        pass
 
+    def __init__():
+    
     def read_out_file(self, new_pos: bool = False):
         if new_pos == True:
             down_a = np.loadtxt("Python\DMP\Out\DMP_Joint_DOWN_A_new_goal.txt", delimiter=",")
