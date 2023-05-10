@@ -14,7 +14,7 @@ from scipy.interpolate import CubicSpline
 
 
 class Blend():
-    def __init__(self, UR5: rtb.ERobot, box=None) -> None:
+    def __init__(self, UR5, box=None) -> None:
         #self.env = env
         self.UR5 = UR5
         self.box = box
@@ -318,7 +318,7 @@ class Blend():
          - tb (np.ndarray): array of acceleration for each segment
         
         """
-        STEP = 0.1
+        STEP = 0.5
         
         # if acc.min < 0 :
         #     print('acc must bigger than 0')
@@ -535,98 +535,87 @@ class Blend():
         - bsize2 (int): size of the blend for traj 2
         - plot (bool): determines if plots are shown
         """
-        if type(traj1) == SE3:
-            traj1 = traj1.t
-            
-        if type(traj2) == SE3:
-            traj2 = traj2.t
-    
-        j0 = traj1[-bsize1][0:3]
-        j1 = traj2[0][0:3]
-        j2 = traj2[bsize2][0:3]
-        j3 = traj1[-bsize1][3:6]
-        j4 = traj2[0][3:6]
-        j5 = traj2[bsize2][3:6]
+        bsize1 = int(len(traj1)/2)
+        bsize2 = int(len(traj2)/2)
+        j0 = np.array([traj1[-bsize1,0], traj2[0,0], traj2[bsize2,0]])
+        j1 = np.array([traj1[-bsize1,1], traj2[0,1], traj2[bsize2,1]])
+        j2 = np.array([traj1[-bsize1,2], traj2[0,2], traj2[bsize2,2]])
+        j3 = np.array([traj1[-bsize1,3], traj2[0,3], traj2[bsize2,3]])
+        j4 = np.array([traj1[-bsize1,4], traj2[0,4], traj2[bsize2,4]])
+        j5 = np.array([traj1[-bsize1,5], traj2[0,5], traj2[bsize2,5]])
 
-        print('j1', j1)
-        print('j2', j2)
-        print('j3', j3)
-        ACC = 10
+        ACC = 5
         # Translation
-        via_x = np.asarray([p1[0],p2[0],p3[0]])
-        dur_x = np.asarray([dur,dur])
-        tb_x = np.asarray([1,1,1])*ACC
-        res_x = self.lspb(via_x, dur_x, tb_x)
+        via_j0 = np.asarray([j0[0], j0[1], j0[2]])
+        dur_j0 = np.asarray([dur,dur])
+        tb_j0 = np.asarray([1,1,1])*ACC
+        res_j0 = self.lspb(via_j0, dur_j0, tb_j0)
 
-        via_y = np.asarray([p1[1],p2[1],p3[1]])
-        dur_y = np.asarray([dur,dur])
-        tb_y = np.asarray([1,1,1])*ACC
-        res_y = self.lspb(via_y, dur_y, tb_y)
+        via_j1 = np.asarray([j1[0], j1[1], j1[2]])
+        dur_j1 = np.asarray([dur,dur])
+        tb_j1 = np.asarray([1,1,1])*ACC
+        res_j1 = self.lspb(via_j1, dur_j1, tb_j1)
 
-        via_z = np.asarray([p1[2],p2[2],p3[2]])
-        dur_z = np.asarray([dur,dur])
-        tb_z = np.asarray([1,1,1])*ACC
-        res_z = self.lspb(via_z, dur_z, tb_z)
+        via_j2 = np.asarray([j2[0], j2[1], j2[2]])
+        dur_j2 = np.asarray([dur,dur])
+        tb_j2 = np.asarray([1,1,1])*ACC
+        res_j2 = self.lspb(via_j2, dur_j2, tb_j2)
 
-        # Orientation
-        via_ox = np.asarray([o1[0],o2[0],o3[0]])
-        dur_ox = np.asarray([dur,dur])
-        tb_ox = np.asarray([1,1,1])*ACC
-        res_ox = self.lspb(via_ox, dur_ox, tb_ox)
+        via_j3 = np.asarray([j3[0], j3[1], j3[2]])
+        dur_j3 = np.asarray([dur,dur])
+        tb_j3 = np.asarray([1,1,1])*ACC
+        res_j3 = self.lspb(via_j3, dur_j3, tb_j3)
 
-        via_oy = np.asarray([o1[1],o2[1],o3[1]])
-        dur_oy = np.asarray([dur,dur])
-        tb_oy = np.asarray([1,1,1])*ACC
-        res_oy = self.lspb(via_oy, dur_oy, tb_oy)
+        via_j4 = np.asarray([j4[0], j4[1], j4[2]])
+        dur_j4 = np.asarray([dur,dur])
+        tb_j4 = np.asarray([1,1,1])*ACC
+        res_j4 = self.lspb(via_j4, dur_j4, tb_j4)
 
-        via_oz = np.asarray([o1[2],o2[2],o3[2]])
-        dur_oz = np.asarray([dur,dur])
-        tb_oz = np.asarray([1,1,1])*ACC
-        res_oz = self.lspb(via_oz, dur_oz, tb_oz)
+        via_j5 = np.asarray([j5[0], j5[1], j5[2]])
+        dur_j5 = np.asarray([dur,dur])
+        tb_j5 = np.asarray([1,1,1])*ACC
+        res_j5 = self.lspb(via_j5, dur_j5, tb_j5)
         
         # Combine all three axis translations into one
-        trans = np.ndarray(shape=(len(res_x[3]),6))
+        trans = np.ndarray(shape=(len(res_j0[3]),6))
 
-        count = 0
-        for i in range(len(res_x[4])):
-            trans[i] = np.array([res_x[4][i],res_y[4][i],res_z[4][i], res_ox[4][i],res_oy[4][i],res_oz[4][i]])
-            if count < 10:
-                print('trans: ', trans[i,2], ', res_z: ', res_z[4][i], ', time: ', res_z[3][i])
-            count = count + 1
-        # Reduce size
-        
-        #trans = trans[::100]
-        
-        traj1r = traj1[:-bsize1,:]
-        traj2r = traj2[bsize2:,:]
-        #trans = np.concatenate([traj1r, trans, traj2r])
-        #trans = np.concatenate([traj1[:,:3], traj2[:,:3]])
-        
+        for i in range(len(res_j0[4])):
+            trans[i] = np.array([res_j0[4][i],res_j1[4][i],res_j2[4][i], res_j3[4][i],res_j4[4][i],res_j5[4][i]])
+                        
         if plot:
-            fig, (axx, axy, axz, axox, axoy, axoz) = plt.subplots(nrows=6, ncols=1,figsize=(10,8))
+            fig, (ax0, ax1, ax2, ax3, ax4, ax5) = plt.subplots(nrows=6, ncols=1,figsize=(10,8))
             # Plot points and generated line for each axis
-            axx.plot(res_x[2],via_x,'*',res_x[3],trans[:,0],'.', label='x')
-            axx.legend()
-            axy.plot(res_y[2],via_y,'*',res_y[3],trans[:,1],'.', label='y')
-            axy.legend()
-            axz.plot(res_z[2],via_z,'*',res_z[3],trans[:,2],'.', label='z')
-            axz.legend()
-            axox.plot(res_z[2],via_z,'*',res_ox[3],trans[:,3],'.', label='z')
-            axox.legend()
-            axoy.plot(res_oy[2],via_oy,'*',res_oy[3],trans[:,4],'.', label='ry')
-            axoy.legend()
-            axoz.plot(res_oz[2],via_oz,'*',res_oz[3],trans[:,5],'.', label='rz')
-            axoz.legend()
+            ax0.plot(res_j0[2],via_j0,'*',res_j0[3],trans[:,0], label='x')
+            ax0.legend()
+            ax1.plot(res_j1[2],via_j1,'*',res_j1[3],trans[:,1], label='y')
+            ax1.legend()
+            ax2.plot(res_j2[2],via_j2,'*',res_j2[3],trans[:,2], label='z')
+            ax2.legend()
+            ax3.plot(res_j3[2],via_j3,'*',res_j3[3],trans[:,3], label='z')
+            ax3.legend()
+            ax4.plot(res_j4[2],via_j4,'*',res_j4[3],trans[:,4], label='ry')
+            ax4.legend()
+            ax5.plot(res_j5[2],via_j5,'*',res_j5[3],trans[:,5], label='rz')
+            ax5.legend()
             
+            
+            tcp1 = self.UR5.fkine(traj1[-bsize1,:])
+            tcp2 = self.UR5.fkine(traj2[0,:])
+            tcp3 = self.UR5.fkine(traj2[bsize2,:])
+            trans1=np.concatenate([traj1,traj2])
             
             fig2 = plt.figure(figsize=(10,5))
             ax2 = fig2.add_subplot(121, projection='3d')
-            ax2.plot(trans[:,0], trans[:,1], trans[:,2],c='r')            
-            ax2.scatter(traj1[0,0], traj1[0,1], traj1[0,2],c='cyan',marker='o')
-            ax2.scatter(p1[0], p1[1], p1[2],c='r',marker='o')
-            ax2.scatter(p2[0], p2[1], p2[2],c='b',marker='o')
-            ax2.scatter(p3[0], p3[1], p3[2],c='g',marker='o')
-            ax2.scatter(traj2[-1,0], traj2[-1,1], traj2[-1,2],c='yellow',marker='o')
+            ax2.scatter(tcp1.t[0], tcp1.t[1], tcp1.t[2],c='r',marker='o')
+            ax2.scatter(tcp2.t[0], tcp2.t[1], tcp2.t[2],c='b',marker='o')
+            ax2.scatter(tcp3.t[0], tcp3.t[1], tcp3.t[2],c='g',marker='o')
+            for q in trans1:
+                tcp = self.UR5.fkine(q)
+                ax2.scatter(tcp.t[0], tcp.t[1], tcp.t[2],c='r',marker='.')
+            for q in trans:
+                tcp = self.UR5.fkine(q)
+                ax2.scatter(tcp.t[0], tcp.t[1], tcp.t[2],c='g',marker='.')
+            #ax2.scatter(traj2[-1,0], traj2[-1,1], traj2[-1,2],c='yellow',marker='o')
             ax2.set_xlabel('X')
             ax2.set_ylabel('Y')
             ax2.set_zlabel('Z')
@@ -634,19 +623,59 @@ class Blend():
             ax2.set_xlim(-1,1)
             ax2.set_ylim(-1,1)
             ax2.set_zlim(-1,1)
-
-            ax3 = fig2.add_subplot(122, projection='3d')
-            ax3.scatter(trans[:,0], trans[:,1], trans[:,2],c='r')
-            ax3.set_xlabel('X')
-            ax3.set_ylabel('Y')
-            ax3.set_zlabel('Z')
-            ax3.set_title('Plot 3D')
-            ax3.set_xlim(-1,1)
-            ax3.set_ylim(-1,1)
-            ax3.set_zlim(-1,1)
             plt.show()
         
-        return trans
+        return np.concatenate([traj1[:-bsize1,:], trans, traj2[bsize2:,:]])
+
+    def blendJointTraj2(self, traj1, traj2, points, dur: int=2, bsize1: int =20, bsize2: int = 20, plot: bool=True):       
+        """
+        Args:
+        - traj1 (np.ndarray): array with x,y,z and rx,ry,rz
+        - traj2 (np.ndarray): array with x,y,z and rx,ry,rz
+        - dur (int): duration length
+        - bsize1 (int): size of the blend for traj 1
+        - bsize2 (int): size of the blend for traj 2
+        - plot (bool): determines if plots are shown
+        """        
+        ACC = 5
+        # Translation
+        via_j0 = np.asarray(points[:,0])
+        dur_j0 = np.ones(len(points[:,0])-1)*dur
+        tb_j0 = np.ones(len(points[:,0]))*ACC
+        res_j0 = self.lspb(via_j0, dur_j0, tb_j0)
+
+        via_j1 = np.asarray(points[:,1])
+        dur_j1 = np.ones(len(points[:,1])-1)*dur
+        tb_j1 = np.ones(len(points[:,1]))*ACC
+        res_j1 = self.lspb(via_j1, dur_j1, tb_j1)
+
+        via_j2 = np.asarray(points[:,2])
+        dur_j2 = np.ones(len(points[:,2])-1)*dur
+        tb_j2 = np.ones(len(points[:,2]))*ACC
+        res_j2 = self.lspb(via_j2, dur_j2, tb_j2)
+
+        via_j3 = np.asarray(points[:,3])
+        dur_j3 = np.ones(len(points[:,3])-1)*dur
+        tb_j3 = np.ones(len(points[:,3]))*ACC
+        res_j3 = self.lspb(via_j3, dur_j3, tb_j3)
+
+        via_j4 = np.asarray(points[:,4])
+        dur_j4 = np.ones(len(points[:,4])-1)*dur
+        tb_j4 = np.ones(len(points[:,4]))*ACC
+        res_j4 = self.lspb(via_j4, dur_j4, tb_j4)
+
+        via_j5 = np.asarray(points[:,5])
+        dur_j5 = np.ones(len(points[:,5])-1)*dur
+        tb_j5 = np.ones(len(points[:,5]))*ACC
+        res_j5 = self.lspb(via_j5, dur_j5, tb_j5)
+        
+        # Combine all three axis translations into one
+        trans = np.ndarray(shape=(len(res_j0[3]),6))
+
+        for i in range(len(res_j0[4])):
+            trans[i] = np.array([res_j0[4][i],res_j1[4][i],res_j2[4][i], res_j3[4][i],res_j4[4][i],res_j5[4][i]])
+        
+        return np.concatenate([traj1[:-bsize1,:], trans, traj2[bsize2:,:]])
 
 
     def jointPositions(self):

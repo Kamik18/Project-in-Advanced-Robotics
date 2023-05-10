@@ -181,10 +181,23 @@ connection_b_a = blendClass.makeTraj(down_b_j[-1], up_a_j[0])
 connection_a_b = blendClass.makeTraj(down_a_j[-1], up_b_j[0])
 return_to_start = blendClass.makeTraj(down_b_j[-1], q0)
 
-
-blendedPath1 = blendClass.blendJointTraj(home_to_start.q, up_b_j, 20, bsize1=10, bsize2=10, plot=True)
-
+blendedPath1 = blendClass.blendJointTraj(home_to_start.q, up_b_j, 5, plot=False)
+#blendedPath2 = blendClass.blendJointTraj(down_b_j, connection_b_a.q, 5, plot=False)
+blendedPath3 = blendClass.blendJointTraj2(down_b_j, up_a_j, np.array([down_b_j[-20], connection_b_a.q[0,:], connection_b_a.q[-1,:],up_a_j[20]]), 5, plot=False)
+adddotsjoints(blendedPath3,(0,0,1))
+exit(1)
+blendedPath4 = blendClass.blendJointTraj(down_a_j, connection_a_b.q, 5, plot=False)
+blendedPath4 = blendClass.blendJointTraj(blendedPath4, up_b_j, 5, plot=False)
+blendedPath5 = blendClass.blendJointTraj(down_b_j, return_to_start.q, 5, plot=False)
+#adddotsjoints(home_to_start.q,(0,0,1))
+#adddotsjoints(up_b_j,(0,0,1))
+#adddotsjoints(down_b_j,(0,0,1))
+#adddotsjoints(connection_b_a.q,(0,0,1))
 adddotsjoints(blendedPath1,(1,0,0))
+adddotsjoints(blendedPath2,(0,1,0))
+adddotsjoints(blendedPath3,(0,0,1))
+adddotsjoints(blendedPath4,(1,0,1))
+adddotsjoints(blendedPath5,(1,1,0))
 exit(1)
 
 
