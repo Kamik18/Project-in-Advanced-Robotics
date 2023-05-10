@@ -1,0 +1,33 @@
+Tue May  9 12:51:52 2023
+WARNING: mju_openResource: unknown file 'franka_emika_panda/scene_pick.xml'
+
+Tue May  9 12:54:54 2023
+WARNING: mju_openResource: unknown file './Example_exercise/franka_emika_panda/scene_pick.xml'
+
+Tue May  9 12:55:11 2023
+WARNING: mju_openResource: unknown file '/home/emil/Documents/GitHub/Project-in-Advanced-Robotics/Example_exercise/franka_emika_panda/scene_pick.xml'
+
+Tue May  9 12:55:34 2023
+WARNING: mju_openResource: unknown file './Example_exercise/franka_emika_panda/scene_pick.xml'
+
+Tue May  9 13:09:07 2023
+ERROR: Fixed camera id is outside valid range
+
+Tue May  9 13:09:41 2023
+ERROR: Fixed camera id is outside valid range
+
+Tue May  9 13:27:08 2023
+ERROR: Fixed camera id is outside valid range
+
+Tue May  9 13:29:51 2023
+ERROR: Fixed camera id is outside valid range
+
+Tue May  9 13:31:14 2023
+ERROR: Fixed camera id is outside valid range
+
+Tue May  9 13:50:03 2023
+WARNING: mju_openResource: unknown file './Example_exercise/franka_emika_panda/scene_pick.xml'
+
+Tue May  9 19:56:12 2023
+ERROR: Fixed camera id is outside valid range
+
