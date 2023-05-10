@@ -4,7 +4,7 @@ from scipy.spatial.transform import Rotation
 
 import numpy as np
 
-PATH :str = "Records/experiments/Blend"
+PATH :str = "Records/experiments"
 TIME:int = 0.02
 
 # Function handler for button and slider
@@ -76,6 +76,10 @@ with open(f"{PATH}/acc.txt", "r") as file:
         for i in range(len(keys)):
             ax_data[keys[i]] = np.append(ax_data[keys[i]], values[i])
     for i in range(len(keys)):
+        # Differentiate the data
+        #ax_data[keys[i]] = np.diff(ax_data[keys[i]]) / TIME
+        # Remove the last element from the x data
+        #x_data = np.linspace(0, len(ax_data[keys[i]]) * TIME, len(ax_data[keys[i]]))
         ax1.lines[i].set_data(x_data, ax_data[keys[i]])
 
 # Open the text file for reading

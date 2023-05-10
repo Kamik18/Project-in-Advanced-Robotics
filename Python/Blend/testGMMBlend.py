@@ -128,19 +128,19 @@ def getData(method: str = "") -> tuple:
     if method == "DMP":
         pass
     elif method == "GMM":
-        data: np.ndarray = GMM.fetch_data_from_records(path="Records/Up_B/**/record_j.txt", skip_size=10)
+        data: np.ndarray = GMM.fetch_data_from_records(path="Records/Up_B/**/record_j.txt", skip_size=50)
         GMM_translation: GMM = GMM.GMM(data=data, n_components=8)
         up_b_j, covariances = GMM_translation.get_path()
 
-        data: np.ndarray = GMM.fetch_data_from_records(path="Records/Down_B/**/record_j.txt", skip_size=10)
+        data: np.ndarray = GMM.fetch_data_from_records(path="Records/Down_B/**/record_j.txt", skip_size=50)
         GMM_translation: GMM = GMM.GMM(data=data, n_components=8)
         down_b_j, covariances = GMM_translation.get_path()
 
-        data: np.ndarray = GMM.fetch_data_from_records(path="Records/Up_A/**/record_j.txt", skip_size=10)
+        data: np.ndarray = GMM.fetch_data_from_records(path="Records/Up_A/**/record_j.txt", skip_size=50)
         GMM_translation: GMM = GMM.GMM(data=data, n_components=8)
         up_a_j, covariances = GMM_translation.get_path()
 
-        data: np.ndarray = GMM.fetch_data_from_records(path="Records/Down_A/**/record_j.txt", skip_size=10)
+        data: np.ndarray = GMM.fetch_data_from_records(path="Records/Down_A/**/record_j.txt", skip_size=50)
         GMM_translation: GMM = GMM.GMM(data=data, n_components=8)
         down_a_j, covariances = GMM_translation.get_path()
     else:
@@ -251,8 +251,8 @@ def log():
 
 
 # up_b_j, down_b_j, up_a_j, down_a_j = getData("DMP")
-# up_b_j, down_b_j, up_a_j, down_a_j = getData("GMM")
-up_b_j, down_b_j, up_a_j, down_a_j = getData()
+up_b_j, down_b_j, up_a_j, down_a_j = getData("GMM")
+# up_b_j, down_b_j, up_a_j, down_a_j = getData()
 
 
 box = Cuboid([1,1,-0.10], base=SE3(0.30,0.34,-0.05), color=[0,0,1])
@@ -261,7 +261,7 @@ blendClass = Blend(UR5=UR5, box=box)
 q0 =  np.array([0, -np.pi / 2, np.pi / 2, -np.pi / 2, -np.pi / 2, -np.pi / 2])
 UR5.q = q0
 
-swiftEnv = True
+swiftEnv = False
 if swiftEnv:
     env = swift.Swift()
     env.launch(realtime=True)
@@ -274,8 +274,8 @@ if swiftEnv:
 
 #move_to_pickup, move_insert_return, return_to_home = oriPath(swiftEnv)
 move_to_pickup, move_insert_return, return_to_home = blendPath(swiftEnv)
+speed = 0.1
 
-exit(1)
 #run robot
 IP = "192.168.1.131"
 rtde_c = RTDEControl(IP)
@@ -303,7 +303,7 @@ log_thread.start()
 # by the stopJ function due to the blocking behaviour.
 
 
-speed = 0.1
+
 for joint in move_to_pickup:
     rtde_c.servoJ(joint, 0,0, speed, 0.2, 100)
     time.sleep(speed)
