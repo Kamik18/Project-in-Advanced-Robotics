@@ -309,6 +309,7 @@ class Blend():
     def lspb(self, via,dur,tb):
         """
         https://github.com/novice1011/trajectory-planning
+        https://smartech.gatech.edu/bitstream/handle/1853/41948/ParabolicBlends.pdf
         1. It must start and end at the first and last waypoint respectively with zero velocity
         2. Note that during the linear phase acceleration is zero, velocity is constant and position is linear in time
         Args:

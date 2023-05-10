@@ -28,3 +28,6 @@ ERROR: Fixed camera id is outside valid range
 Tue May  9 13:50:03 2023
 WARNING: mju_openResource: unknown file './Example_exercise/franka_emika_panda/scene_pick.xml'
 
+Tue May  9 19:56:12 2023
+ERROR: Fixed camera id is outside valid range
+
