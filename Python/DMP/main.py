@@ -8,7 +8,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from pyquaternion import Quaternion
 import roboticstoolbox as rtb
 from scipy.spatial.transform import Rotation as R
-from spatialmath import SE3
+from spatialmath import SE3, SO3
 from spatialmath.base import q2r   
 import swift
 import spatialgeometry as sg
@@ -22,21 +22,37 @@ bSMOTHER   = True
 bSaveFiles = True
 bOriention = True
 bDifferntTime = True
-TRAINING_TIME = 10.0
-DMP_TIME = 10.0
+
+
+
+DEOM_COLOR = 'r'
+DMP_COLOR = 'b'
+DMP_COLOR_NEW_POS = 'g'
+
 
 DMP_J  = True
 DMP_TCP = False
+DMP_NEW_POS = True
+TRAINING_TIME = 10.0
+DMP_TIME = 10.0
 
-J_GOAL_POS_A = np.array([-76.43, -17.78, 48.36, -43.94, 316.89, 104.93])
-J_GOAL_POS_A = np.deg2rad(J_GOAL_POS_A)
+J_GOAL_POS_A_PLACE = np.array([-79.52, -30.42, 83.56, -56.42, -56.13, 2.97])
+J_GOAL_POS_A_PLACE = np.deg2rad(J_GOAL_POS_A_PLACE)
 
-J_GOAL_POS_B = np.array([5.40, -30.95, 42.53, -103.12, 264.42, 78.42])
-J_GOAL_POS_B = np.deg2rad(J_GOAL_POS_B)
+J_GOAL_POS_B_PLACE = np.array([4.49, -18.11, 18.78, -94.43, -88.82, 107.88])
+J_GOAL_POS_B_PLACE = np.deg2rad(J_GOAL_POS_B_PLACE)
 
-#Up_B/1
-FileName = 'Records/Up_A/11/'
+J_GOAL_POS_A_PICK = np.array([-1.477736775075094,-1.6750246487059535,2.171894375477926,-2.002197404901022,-1.5889580885516565,0.696304976940155
+])
+
+J_GOAL_POS_B_PICK = np.array([0.8,-1.6359934133342286,1.779691282855433,-1.724114094176234,-1.585386101399557,-2.436488215123312
+])
+
+J_GOAL_POS  = J_GOAL_POS_B_PLACE
+
+FileName = 'Records/UP_B/3/'
 sOutPath = 'Python/DMP/Out/'
+
 
 def euler_from_quaternion(x, y, z, w):
     """
@@ -72,9 +88,22 @@ def quat_to_angle_axis(q):
         q (_type_): quaternion
 
     Returns:
-        _type_: angle axis np.array([x,y,z])
+        np.array: angle axis np.array([x,y,z])
     """
+    angle_axis = np.empty((len(q),3))
+    for i in range(len(q)-1):
+        q_ = q[i]
+        qw= q_[3]
+        angle = 2 * np.arccos(qw)
+        axis_x = q_[0] / np.sqrt(1 - qw**2)
+        axis_y = q_[1] / np.sqrt(1 - qw**2)
+        axis_z = q_[2] / np.sqrt(1 - qw**2)
+        an_axis = [axis_x * angle, axis_y * angle, axis_z * angle]
 
+        angle_axis[i] = an_axis
+
+    return angle_axis
+    
     angle_axis = np.empty((len(q),3))
     for i in range(len(q)-1):
         r = R.from_quat(q[i])
@@ -175,7 +204,7 @@ def read_demo_files(filename, skip_lines=4):
         for i, line in enumerate(f):
             # Check if the line number is a multiple of skip_lines-1
             if i % skip_lines == skip_lines-1:
-                values = tuple(map(float, line.strip()[1:-1].split(',')))
+                values = tuple(map(float, line.split(',')))
                 tuples.append(values)
     demo = np.array(tuples)
 
@@ -183,7 +212,7 @@ def read_demo_files(filename, skip_lines=4):
     with open(filename + "record_j.txt", "r") as f:
         for i, line in enumerate(f):
             if i % skip_lines == skip_lines-1:
-                values = tuple(map(float, line.strip()[1:-1].split(',')))
+                values = tuple(map(float, line.split(',')))
                 tuples_joints.append(values)
 
     demo_joint = np.array(tuples_joints)
@@ -228,32 +257,43 @@ def quaternion_to_np_array(dmp_r):
 
 
 
-
-
 if __name__ == '__main__':
     
     demo,demo_joint = read_demo_files(FileName, skip_lines=10)
-    N = 8
+
+    N = 7
     cs_alpha = -np.log(0.0001)
+
+
     if DMP_J:
-        
         tau = TRAINING_TIME
         t_train = np.arange(0, tau, TRAINING_TIME/ len(demo_joint))
 
         tau = DMP_TIME 
         t = np.arange(0, tau, DMP_TIME / len(demo_joint))
-
     
         ## encode DMP 
         dmp_q = JointDMP(NDOF=6,n_bfs=N, alpha=48, beta=12, cs_alpha=cs_alpha)
         dmp_q.train(demo_joint, t_train, tau)
 
         ## integrate DMP
+
         q_out, dq_out, ddq_out = dmp_q.rollout(t_train, tau, FX=True)
-        J_GOAL_POS_A = demo_joint[-1].copy()
-        J_GOAL_POS_A = np.pi
-        dmp_q.gp = J_GOAL_POS_A
-        q_out_new_pos, dq_out_new_pos, ddq_out_new_pos = dmp_q.rollout(t_train, tau, FX=True)
+
+        if DMP_NEW_POS:
+            dmp_q.gp = J_GOAL_POS
+            q_out_new_pos, dq_out_new_pos, ddq_out_new_pos = dmp_q.rollout(t_train, tau, FX=True)
+
+
+        if bSaveFiles:
+            # Save the result to a file
+            path = FileName.replace("/", "_")
+            path = path.replace("Records", "DMP_Joint")
+            np.savetxt(sOutPath + path + 'smoothing.txt', q_out, delimiter=',', fmt='%1.6f')
+            if DMP_NEW_POS:
+                np.savetxt(sOutPath +  path +'new_goal_pos.txt', q_out_new_pos, delimiter=',', fmt='%1.6f')
+           
+
 
         ## plot DMP
         if bPLOT:
@@ -261,42 +301,47 @@ if __name__ == '__main__':
             fig5.suptitle('DMP-Q ', fontsize=16)
             axs[0].plot(t_train, demo_joint[:, 0], '--', label='Demonstration', color='red')
             axs[0].plot(t, q_out[:, 0], label='DMP', color='blue')
-            axs[0].plot(t, q_out_new_pos[:, 0], label='DMP-gp', color='green')
+            if DMP_NEW_POS:
+                axs[0].plot(t, q_out_new_pos[:, 0], label='DMP-gp', color='green')
+
             axs[0].set_xlabel('t (s)')
             axs[0].set_ylabel('q1 (rad)')
 
             axs[1].plot(t_train, demo_joint[:, 1], '--', label='Demonstration', color='red')
             axs[1].plot(t, q_out[:, 1], label='DMP', color='blue')
-            axs[1].plot(t, q_out_new_pos[:, 1], label='DMP-gp', color='green')
+            if DMP_NEW_POS:
+                axs[1].plot(t, q_out_new_pos[:, 1], label='DMP-gp', color='green')
             axs[1].set_xlabel('t (s)')
             axs[1].set_ylabel('q2 (rad)')
 
             axs[2].plot(t_train, demo_joint[:, 2], '--', label='Demonstration', color='red')
             axs[2].plot(t, q_out[:, 2], label='DMP', color='blue')
-            axs[2].plot(t, q_out_new_pos[:, 2], label='DMP-gp', color='green')
+            if DMP_NEW_POS:
+                axs[2].plot(t, q_out_new_pos[:, 2], label='DMP-gp', color='green')
             axs[2].set_xlabel('t (s)')
             axs[2].set_ylabel('q3 (rad)')
 
             axs[3].plot(t_train, demo_joint[:, 3], '--', label='Demonstration', color='red')
             axs[3].plot(t, q_out[:, 3], label='DMP', color='blue')
-            axs[3].plot(t, q_out_new_pos[:, 3], label='DMP-gp', color='green')
+            if DMP_NEW_POS:
+                axs[3].plot(t, q_out_new_pos[:, 3], label='DMP-gp', color='green')
             axs[3].set_xlabel('t (s)')
             axs[3].set_ylabel('q4 (rad)')
 
             axs[4].plot(t_train, demo_joint[:, 4], '--', label='Demonstration', color='red')
             axs[4].plot(t, q_out[:, 4], label='DMP', color='blue')
-            axs[4].plot(t, q_out_new_pos[:, 4], label='DMP-gp', color='green')
+            if DMP_NEW_POS:
+                axs[4].plot(t, q_out_new_pos[:, 4], label='DMP-gp', color='green')
             axs[4].set_xlabel('t (s)')
             axs[4].set_ylabel('q5 (rad)')
 
             axs[5].plot(t_train, demo_joint[:, 5], '--', label='Demonstration', color='red')
             axs[5].plot(t, q_out[:, 5], label='DMP', color='blue')
-            axs[5].plot(t, q_out_new_pos[:, 5], label='DMP-gp', color='green')
+            if DMP_NEW_POS:
+                axs[5].plot(t, q_out_new_pos[:, 5], label='DMP-gp', color='green')
             axs[5].set_xlabel('t (s)')
             axs[5].set_ylabel('q6 (rad)')
             axs[5].legend()
-
-
 
             plt.show()
 
@@ -305,16 +350,21 @@ if __name__ == '__main__':
             env.launch(realtime=True)
 
             UR5 = rtb.models.UR5() 
-            UR5.base = SE3(0.4,0.25,0)
+            UR5.base = SE3(0,0,0)
             UR5.payload(1.390, [0,0, 0.057])
             env.add(UR5)
-
-            box = sg.Cuboid([1,1,-0.10], base=SE3(0,-0.14,-0.05), color=[0,0,1])
+            box = sg.Cuboid([1,1,-0.10], base=SE3(0.3,0.3,-0.05), color=[0,0,1])
             env.add(box)
             
             q_init = demo_joint[0]
             UR5.q = q_init        
             env.step()
+            if DMP_NEW_POS:
+                for q in q_out_new_pos:
+                    trans = UR5.fkine(q)
+                    add_marker(trans, [0,1,0],True)
+                    UR5.q = q
+                    env.step(dt=0.02)             
             for q in q_out:
                 trans = UR5.fkine(q)
                 add_marker(trans, [0,0,1],True)
@@ -326,11 +376,6 @@ if __name__ == '__main__':
                 UR5.q = q
                 env.step(dt=0.02)
 
-            for q in q_out_new_pos:
-                trans = UR5.fkine(q)
-                add_marker(trans, [0,1,0],True)
-                UR5.q = q
-                env.step(dt=0.02)
             env.hold()
 
 
@@ -356,9 +401,7 @@ if __name__ == '__main__':
         tau_train = TRAINING_TIME
         t_train = np.arange(0, tau_train, TRAINING_TIME/ len(demo))
         print("tau_train: ", tau_train)
-        
-        N = 7 #Number of basis functions: Increasing the number of basis functions can make the trajectory smoother by allowing for more fine-grained control over the shape of the trajectory.
-        
+
         #Position...
         dmp = PositionDMP(n_bfs=N, alpha=40.0,beta=10.0)
         dmp.p0 = (demo_p[0])
@@ -381,6 +424,8 @@ if __name__ == '__main__':
         #Convert the res of quat to numpy array
         result_quat_array = quaternion_to_np_array(dmp_r)
 
+        
+
         new_goal_pos = demo_p[-1].copy()
         print("pos_goal_pos: ", new_goal_pos)
         
@@ -395,17 +440,24 @@ if __name__ == '__main__':
 
         result_quat_array_new_goal = quaternion_to_np_array(dmp_r_new_goal)
 
-        
+        angle_axis_demo = quat_to_angle_axis(demo_quat_array)
+        angle_axis = quat_to_angle_axis(result_quat_array)
+
+        fig, axs = plt.subplots(6, 1, figsize=(10, 10))
+        axs[0].plot(angle_axis_demo[:, 0], label='DMP-gp', color='red')
+        axs[0].plot(angle_axis[:, 0], label='DMP-gp', color='red')
+
+
         if bSimulation:
             env = swift.Swift()
             env.launch(realtime=True)
 
             UR5 = rtb.models.UR5() 
-            UR5.base = SE3(0.4,0.25,0)
+            UR5.base = SE3(0,0,0)
             UR5.payload(1.390, [0,0, 0.057])
             env.add(UR5)
 
-            box = sg.Cuboid([1,1,-0.10], base=SE3(0,-0.14,-0.05), color=[0,0,1])
+            box = sg.Cuboid([1,1,-0.10], base=SE3(0,0,-0.05), color=[0,0,1])
             env.add(box)
             
             q_init = demo_joint[0]
@@ -417,6 +469,14 @@ if __name__ == '__main__':
             # demo trajectory
             homgenTransList =[]
             homgenTransList = trans_from_pos_quat(demo_p, demo_quat_array, True)  
+
+            for trans in homgenTransList:
+                add_marker(trans, [1,0.5,0.5],True)
+                sol = UR5.ikine_LM(trans, q0=q_init)
+                q_init = sol.q
+                UR5.q = sol.q
+                env.step(dt=0.02)
+            env.hold()
             add_marker(homgenTransList, [1,0,0])
 
 
@@ -431,14 +491,8 @@ if __name__ == '__main__':
             homgenTransList =[]
             homgenTransList = trans_from_pos_quat(dmp_p_new_goal, result_quat_array_new_goal, True)
             add_marker(homgenTransList, [0,1,1])
-            sol = UR5.ikine_LM(homgenTransList[-1], q0=demo_joint[-1])
-            print("q_final: ", sol.q)
-            # for trans in homgenTransList:
-            #     add_marker(trans, [1,0.5,1],True)
-            #     sol = UR5.ikine_LM(trans, q0=q_init)
-            #     q_init = sol.q
-            #     UR5.q = sol.q
-            #     env.step(dt=0.02)
+            
+            
                 
             print("Done")
             
