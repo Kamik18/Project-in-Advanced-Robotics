@@ -22,8 +22,8 @@ bSMOTHER   = True
 bSaveFiles = True
 bOriention = True
 bDifferntTime = True
-TRAINING_TIME = 5.0
-DMP_TIME = 5.0
+TRAINING_TIME = 10.0
+DMP_TIME = 10.0
 
 DMP_J  = True
 DMP_TCP = False
@@ -40,8 +40,7 @@ J_GOAL_POS_B = np.deg2rad(J_GOAL_POS_B)
 
 J_GOAL_POS  = J_GOAL_POS_B
 
-#Up_B/1
-FileName = 'Records/Up_B/3/'
+FileName = 'Records/DOWN_B/3/'
 sOutPath = 'Python/DMP/Out/'
 
 def euler_from_quaternion(x, y, z, w):
