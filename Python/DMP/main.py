@@ -256,6 +256,13 @@ def quaternion_to_np_array(dmp_r):
     return result_quat_array
 
 
+def read_out_file():
+    down_a = np.loadtxt("Python\DMP\Out\DMP_Joint_DOWN_A_smoothing.txt", delimiter=",")
+    down_b = np.loadtxt("Python\DMP\Out\DMP_Joint_DOWN_B_smoothing.txt", delimiter=",")
+    up_a = np.loadtxt("Python\DMP\Out\DMP_Joint_UP_A_smoothing.txt", delimiter=",")
+    up_b = np.loadtxt("Python\DMP\Out\DMP_Joint_UP_B_smoothing.txt", delimiter=",")
+    return down_a, down_b, up_a, up_b
+    
 
 if __name__ == '__main__':
     
