@@ -10,6 +10,7 @@ from rtde_control import RTDEControlInterface as RTDEControl
 from rtde_receive import RTDEReceiveInterface as RTDEReceive
 import time
 from Python.Gripper.RobotiqGripper import RobotiqGripper
+import Python.GMM.GMM as GMM
 
 def fetch_data_from_records(path: str) -> np.ndarray:
     """Fetch the demonstration data from the records
@@ -124,10 +125,22 @@ def adddotsjoints(traj, colorref):
 #up_a = up_a[::10]
 # Joints
 # GMM
-#up_b_j: np.ndarray = fetch_data_from_records("./Python/Blend/Up_B_j.txt")
-#down_b_j: np.ndarray = fetch_data_from_records("./Python/Blend/Down_B_j.txt")
-#down_a_j: np.ndarray = fetch_data_from_records("./Python/Blend/Down_A_j.txt")
-#up_a_j: np.ndarray = fetch_data_from_records("./Python/Blend/Up_A_j.txt")
+data: np.ndarray = GMM.fetch_data_from_records(path="./Records/Up_B/**/Record_j.txt", skip_size=10)
+GMM_translation: GMM = GMM.GMM(data=data, n_components=8)
+up_b_j, covariances = GMM_translation.get_path()
+
+data: np.ndarray = GMM.fetch_data_from_records(path="./Records/Down_B/**/Record_j.txt", skip_size=10)
+GMM_translation: GMM = GMM.GMM(data=data, n_components=8)
+down_b_j, covariances = GMM_translation.get_path()
+
+data: np.ndarray = GMM.fetch_data_from_records(path="./Records/Up_A/**/Record_j.txt", skip_size=10)
+GMM_translation: GMM = GMM.GMM(data=data, n_components=8)
+up_a_j, covariances = GMM_translation.get_path()
+
+data: np.ndarray = GMM.fetch_data_from_records(path="./Records/Down_A/**/Record_j.txt", skip_size=10)
+GMM_translation: GMM = GMM.GMM(data=data, n_components=8)
+down_a_j, covariances = GMM_translation.get_path()
+
 # Original
 up_b_j: np.ndarray = np.loadtxt("./Records/Up_B/1/record_j.txt", delimiter=',', skiprows=0)
 down_b_j: np.ndarray = np.loadtxt("./Records/Down_B/1/record_j.txt", delimiter=',', skiprows=0)
@@ -139,7 +152,7 @@ down_a_j: np.ndarray = np.loadtxt("./Records/Down_A/1/record_j.txt", delimiter='
 #up_a_v: np.ndarray = np.loadtxt("./Records/Up_A/1/velocity.txt", delimiter=',', skiprows=0)
 #down_a_v: np.ndarray = np.loadtxt("./Records/Down_A/1/velocity.txt", delimiter=',', skiprows=0)
 
-#downsample
+# Down sample
 up_b_j = up_b_j[::50]
 down_b_j = down_b_j[::50]
 up_a_j = up_a_j[::50]
