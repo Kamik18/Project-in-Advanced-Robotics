@@ -32,7 +32,7 @@ DMP_COLOR_NEW_POS = 'g'
 
 DMP_J  = True
 DMP_TCP = False
-DMP_NEW_POS = False
+DMP_NEW_POS = True
 TRAINING_TIME = 10.0
 DMP_TIME = 10.0
 
@@ -42,9 +42,15 @@ J_GOAL_POS_A_PLACE = np.deg2rad(J_GOAL_POS_A_PLACE)
 J_GOAL_POS_B_PLACE = np.array([4.49, -18.11, 18.78, -94.43, -88.82, 107.88])
 J_GOAL_POS_B_PLACE = np.deg2rad(J_GOAL_POS_B_PLACE)
 
+J_GOAL_POS_A_PICK = np.array([-1.477736775075094,-1.6750246487059535,2.171894375477926,-2.002197404901022,-1.5889580885516565,0.696304976940155
+])
+
+J_GOAL_POS_B_PICK = np.array([0.8,-1.6359934133342286,1.779691282855433,-1.724114094176234,-1.585386101399557,-2.436488215123312
+])
+
 J_GOAL_POS  = J_GOAL_POS_B_PLACE
 
-FileName = 'Records/DOWN_A/3/'
+FileName = 'Records/UP_B/3/'
 sOutPath = 'Python/DMP/Out/'
 
 
@@ -251,23 +257,20 @@ def quaternion_to_np_array(dmp_r):
 
 
 
-
-
 if __name__ == '__main__':
     
     demo,demo_joint = read_demo_files(FileName, skip_lines=10)
-    
-    
+
     N = 7
     cs_alpha = -np.log(0.0001)
+
+
     if DMP_J:
-        
         tau = TRAINING_TIME
         t_train = np.arange(0, tau, TRAINING_TIME/ len(demo_joint))
 
         tau = DMP_TIME 
         t = np.arange(0, tau, DMP_TIME / len(demo_joint))
-
     
         ## encode DMP 
         dmp_q = JointDMP(NDOF=6,n_bfs=N, alpha=48, beta=12, cs_alpha=cs_alpha)
