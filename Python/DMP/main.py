@@ -22,26 +22,31 @@ bSMOTHER   = True
 bSaveFiles = True
 bOriention = True
 bDifferntTime = True
-TRAINING_TIME = 10.0
-DMP_TIME = 10.0
 
-DMP_J  = True
-DMP_TCP = False
+
 
 DEOM_COLOR = 'r'
 DMP_COLOR = 'b'
 DMP_COLOR_NEW_POS = 'g'
 
-J_GOAL_POS_A = np.array([-79.52, -30.42, 83.56, -56.42, -56.13, 2.97])
-J_GOAL_POS_A = np.deg2rad(J_GOAL_POS_A)
 
-J_GOAL_POS_B = np.array([4.49, -18.11, 18.78, -94.43, -88.82, 107.88])
-J_GOAL_POS_B = np.deg2rad(J_GOAL_POS_B)
+DMP_J  = True
+DMP_TCP = False
+DMP_NEW_POS = False
+TRAINING_TIME = 10.0
+DMP_TIME = 10.0
 
-J_GOAL_POS  = J_GOAL_POS_B
+J_GOAL_POS_A_PLACE = np.array([-79.52, -30.42, 83.56, -56.42, -56.13, 2.97])
+J_GOAL_POS_A_PLACE = np.deg2rad(J_GOAL_POS_A_PLACE)
 
-FileName = 'Records/DOWN_B/3/'
+J_GOAL_POS_B_PLACE = np.array([4.49, -18.11, 18.78, -94.43, -88.82, 107.88])
+J_GOAL_POS_B_PLACE = np.deg2rad(J_GOAL_POS_B_PLACE)
+
+J_GOAL_POS  = J_GOAL_POS_B_PLACE
+
+FileName = 'Records/DOWN_A/3/'
 sOutPath = 'Python/DMP/Out/'
+
 
 def euler_from_quaternion(x, y, z, w):
     """
@@ -253,7 +258,7 @@ if __name__ == '__main__':
     demo,demo_joint = read_demo_files(FileName, skip_lines=10)
     
     
-    N = 100
+    N = 7
     cs_alpha = -np.log(0.0001)
     if DMP_J:
         
@@ -269,10 +274,12 @@ if __name__ == '__main__':
         dmp_q.train(demo_joint, t_train, tau)
 
         ## integrate DMP
+
         q_out, dq_out, ddq_out = dmp_q.rollout(t_train, tau, FX=True)
-       
-        dmp_q.gp = J_GOAL_POS
-        q_out_new_pos, dq_out_new_pos, ddq_out_new_pos = dmp_q.rollout(t_train, tau, FX=True)
+
+        if DMP_NEW_POS:
+            dmp_q.gp = J_GOAL_POS
+            q_out_new_pos, dq_out_new_pos, ddq_out_new_pos = dmp_q.rollout(t_train, tau, FX=True)
 
 
         if bSaveFiles:
@@ -280,7 +287,8 @@ if __name__ == '__main__':
             path = FileName.replace("/", "_")
             path = path.replace("Records", "DMP_Joint")
             np.savetxt(sOutPath + path + 'smoothing.txt', q_out, delimiter=',', fmt='%1.6f')
-            np.savetxt(sOutPath +  path +'new_goal_pos.txt', q_out_new_pos, delimiter=',', fmt='%1.6f')
+            if DMP_NEW_POS:
+                np.savetxt(sOutPath +  path +'new_goal_pos.txt', q_out_new_pos, delimiter=',', fmt='%1.6f')
            
 
 
@@ -290,37 +298,44 @@ if __name__ == '__main__':
             fig5.suptitle('DMP-Q ', fontsize=16)
             axs[0].plot(t_train, demo_joint[:, 0], '--', label='Demonstration', color='red')
             axs[0].plot(t, q_out[:, 0], label='DMP', color='blue')
-            axs[0].plot(t, q_out_new_pos[:, 0], label='DMP-gp', color='green')
+            if DMP_NEW_POS:
+                axs[0].plot(t, q_out_new_pos[:, 0], label='DMP-gp', color='green')
+
             axs[0].set_xlabel('t (s)')
             axs[0].set_ylabel('q1 (rad)')
 
             axs[1].plot(t_train, demo_joint[:, 1], '--', label='Demonstration', color='red')
             axs[1].plot(t, q_out[:, 1], label='DMP', color='blue')
-            axs[1].plot(t, q_out_new_pos[:, 1], label='DMP-gp', color='green')
+            if DMP_NEW_POS:
+                axs[1].plot(t, q_out_new_pos[:, 1], label='DMP-gp', color='green')
             axs[1].set_xlabel('t (s)')
             axs[1].set_ylabel('q2 (rad)')
 
             axs[2].plot(t_train, demo_joint[:, 2], '--', label='Demonstration', color='red')
             axs[2].plot(t, q_out[:, 2], label='DMP', color='blue')
-            axs[2].plot(t, q_out_new_pos[:, 2], label='DMP-gp', color='green')
+            if DMP_NEW_POS:
+                axs[2].plot(t, q_out_new_pos[:, 2], label='DMP-gp', color='green')
             axs[2].set_xlabel('t (s)')
             axs[2].set_ylabel('q3 (rad)')
 
             axs[3].plot(t_train, demo_joint[:, 3], '--', label='Demonstration', color='red')
             axs[3].plot(t, q_out[:, 3], label='DMP', color='blue')
-            axs[3].plot(t, q_out_new_pos[:, 3], label='DMP-gp', color='green')
+            if DMP_NEW_POS:
+                axs[3].plot(t, q_out_new_pos[:, 3], label='DMP-gp', color='green')
             axs[3].set_xlabel('t (s)')
             axs[3].set_ylabel('q4 (rad)')
 
             axs[4].plot(t_train, demo_joint[:, 4], '--', label='Demonstration', color='red')
             axs[4].plot(t, q_out[:, 4], label='DMP', color='blue')
-            axs[4].plot(t, q_out_new_pos[:, 4], label='DMP-gp', color='green')
+            if DMP_NEW_POS:
+                axs[4].plot(t, q_out_new_pos[:, 4], label='DMP-gp', color='green')
             axs[4].set_xlabel('t (s)')
             axs[4].set_ylabel('q5 (rad)')
 
             axs[5].plot(t_train, demo_joint[:, 5], '--', label='Demonstration', color='red')
             axs[5].plot(t, q_out[:, 5], label='DMP', color='blue')
-            axs[5].plot(t, q_out_new_pos[:, 5], label='DMP-gp', color='green')
+            if DMP_NEW_POS:
+                axs[5].plot(t, q_out_new_pos[:, 5], label='DMP-gp', color='green')
             axs[5].set_xlabel('t (s)')
             axs[5].set_ylabel('q6 (rad)')
             axs[5].legend()
@@ -341,11 +356,12 @@ if __name__ == '__main__':
             q_init = demo_joint[0]
             UR5.q = q_init        
             env.step()
-            for q in q_out_new_pos:
-                trans = UR5.fkine(q)
-                add_marker(trans, [0,1,0],True)
-                UR5.q = q
-                env.step(dt=0.02)             
+            if DMP_NEW_POS:
+                for q in q_out_new_pos:
+                    trans = UR5.fkine(q)
+                    add_marker(trans, [0,1,0],True)
+                    UR5.q = q
+                    env.step(dt=0.02)             
             for q in q_out:
                 trans = UR5.fkine(q)
                 add_marker(trans, [0,0,1],True)
