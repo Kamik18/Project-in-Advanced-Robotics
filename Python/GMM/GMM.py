@@ -182,7 +182,7 @@ class GMM:
         if visualize == "path":
             fig_paths = plt.figure(figsize=(10, 5))
             ax = plt.axes(projection="3d")
-
+            
             # Plot the covariance ellipses for the GMM path
             for i in range(len(path_gmm["x"])):
                 from scipy import interpolate
@@ -231,9 +231,24 @@ class GMM:
                       path_gmm["z"], color="red", alpha=1.0, label="GMM")
 
             ax.set_title(f"GMM with {len(self.__data)} demonstrations")
+            ax.axis('equal')
+            # Get the limits of the axis
+            x_lim = (np.floor(ax.get_xlim()[0] * 10) / 10, np.ceil(ax.get_xlim()[1] * 10) / 10)
+            y_lim = (np.floor(ax.get_ylim()[0] * 10) / 10, np.ceil(ax.get_ylim()[1] * 10) / 10)
+            z_lim = (np.floor(ax.get_zlim()[0] * 10) / 10, np.ceil(ax.get_zlim()[1] * 10) / 10)
+            # Set limits
+            ax.set_xlim(x_lim)
+            ax.set_ylim(y_lim)
+            ax.set_zlim(z_lim)
+            # Set ticks 
+            ax.set_xticks(np.arange( x_lim[0], x_lim[1], 0.1))
+            ax.set_yticks(np.arange( y_lim[0], y_lim[1], 0.1))
+            ax.set_zticks(np.arange( z_lim[0], z_lim[1], 0.1))
+            # Labels
             ax.set_xlabel("x")
             ax.set_ylabel("y")
             ax.set_zlabel("z")
+            # Legend
             ax.legend()
 
         elif visualize == "path2d":
@@ -322,6 +337,9 @@ class GMM:
             ax.set_ylabel("z [m]")
             ax.legend()
 
+        # Save the plot
+        plt.savefig(f"python/GMM/{visualize}.pdf", format="pdf", bbox_inches="tight")
+
         # Visualize the plots
         plt.show()
 
@@ -358,8 +376,7 @@ class GMM:
 if __name__ == "__main__":
     #data:np.ndarray = simulation_data(n_demonstrations=20, n_steps=150)
 
-    data: np.ndarray = fetch_data_from_records(
-        path="./Records/Up_A/**/Record_tcp.txt", skip_size=10)  # From up to down
+    data: np.ndarray = fetch_data_from_records(path="./Records/Up_A/**/Record_tcp.txt", skip_size=10)  # From up to down
     #data: np.ndarray = fetch_data_from_records(path="./Records/Down_A/**/Record_tcp.txt", skip_size=10)
     #data: np.ndarray = fetch_data_from_records(path="./Records/Up_B/**/Record_tcp.txt", skip_size=10)
     #data: np.ndarray = fetch_data_from_records(path="./Records/Down_B/**/Record_tcp.txt", skip_size=10)
@@ -371,7 +388,7 @@ if __name__ == "__main__":
     data[:, :, 2] = temp_data    
     """
 
-    GMM_translation: GMM = GMM(data=data, n_components=4)
+    GMM_translation: GMM = GMM(data=data, n_components=8)
     GMM_translation.plot("path")
     # GMM_translation.plot("path2d")
     # GMM_translation.plot("covariance")
