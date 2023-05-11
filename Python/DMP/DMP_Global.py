@@ -40,7 +40,7 @@ class DMP_SPC:
         self.J_GOAL_POS_UP_B = np.deg2rad(self.J_GOAL_POS_UP_B)
 
         self.J_GOAL_POS_DOWN_A = np.array([])
-        self.J_GOAL_POS_DOWN_B = np.deg2rad(np.array([7.73,-76.83,66.20,-107.86, -92.3, -53.30]))
+        self.J_GOAL_POS_DOWN_B = np.deg2rad(np.array([5.76,-46.46, 74.44, -116.42, -87.39, -53.33]))
 
 
         
