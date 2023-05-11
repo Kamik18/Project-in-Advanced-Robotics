@@ -326,13 +326,13 @@ class DMP_SPC:
 
     def read_out_new_pos_file(self, DOWN_A ,DOWN_B, UP_A, UP_B, skip_lines=5):
         if DOWN_A:
-            spath = "Python\DMP\Out/DOWN_A_new_goal_pos.txt"
+            spath = "Python/DMP/Out/DOWN_A_new_goal_pos.txt"
         if DOWN_B:
-            spath = "Python\DMP\Out/DOWN_B_new_goal_pos.txt"
+            spath = "Python/DMP/Out/DOWN_B_new_goal_pos.txt"
         if UP_A:
-            spath = "Python\DMP\Out/UP_A_new_goal_pos.txt"
+            spath = "Python/DMP/Out/UP_A_new_goal_pos.txt"
         if UP_B:
-            spath = "Python\DMP\Out/UP_B_new_goal_pos.txt"
+            spath = "Python/DMP/Out/UP_B_new_goal_pos.txt"
 
         tuples =[]
         with open(spath, "r") as f:
