@@ -25,10 +25,10 @@ class DMP_SPC:
 
         self.DMP_J  = True
         self.DMP_TCP = False
-        self.DMP_NEW_POS = False
+        self.DMP_NEW_POS = True
 
-        self.RUN_DOWN_A = True
-        self.RUN_DOWN_B = False
+        self.RUN_DOWN_A = False
+        self.RUN_DOWN_B = True
         self.RUN_UP_A = False
         self.RUN_UP_B = False
         
@@ -40,7 +40,7 @@ class DMP_SPC:
         self.J_GOAL_POS_UP_B = np.deg2rad(self.J_GOAL_POS_UP_B)
 
         self.J_GOAL_POS_DOWN_A = np.array([])
-        self.J_GOAL_POS_DOWN_B = np.array([])
+        self.J_GOAL_POS_DOWN_B = np.array([0.300169,-1.672241,1.561409,-1.428667,-1.595302,-2.834139])
 
 
         
