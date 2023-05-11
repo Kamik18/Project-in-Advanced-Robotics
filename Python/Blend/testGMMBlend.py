@@ -131,8 +131,8 @@ def getData(method: str = "") -> tuple:
     if method == "DMP":
         dmp_spec = DMP.DMP_SPC()
         down_a_j, down_b_j,up_a_j, up_b_j = dmp_spec.read_out_file(skip_lines=5)
-        down_b_j = dmp_spec.read_out_new_pos_file(skip_lines=1,DOWN_B=True, UP_B=False, UP_A=False, DOWN_A=False)
-        up_b_j = dmp_spec.read_out_new_pos_file(skip_lines=5,UP_B=True, DOWN_B=False, UP_A=False, DOWN_A=False)
+        #down_b_j = dmp_spec.read_out_new_pos_file(skip_lines=1,DOWN_B=True, UP_B=False, UP_A=False, DOWN_A=False)
+        #up_b_j = dmp_spec.read_out_new_pos_file(skip_lines=5,UP_B=True, DOWN_B=False, UP_A=False, DOWN_A=False)
          
     elif method == "GMM":
         data: np.ndarray = GMM.fetch_data_from_records(path="Records/Up_B/**/record_j.txt", skip_size=50)
@@ -231,10 +231,12 @@ def blendPath(plot: bool = False):
 
 
     # Merge the paths
-    up_b_j = up_b_j_dmp
-    down_b_j = down_b_j_dmp
-    #up_a_j = up_a_j_dmp
-    #down_a_j = down_a_j_dmp
+    #up_b_j = up_b_j_dmp
+    #down_b_j = down_b_j_dmp
+    up_a_j = up_a_j_dmp
+    down_a_j = down_a_j_dmp
+    print(up_a_j.shape)
+    print(down_a_j.shape)
 
 
     # Connection paths
@@ -410,7 +412,7 @@ if swiftEnv:
 move_to_pickup, move_insert_return, return_to_home = blendPath(swiftEnv)
 
 
-speed = 0.3
+speed = 0.1
 if not swiftEnv:
     runRobot(speed, move_to_pickup, move_insert_return, return_to_home)
 
