@@ -48,9 +48,11 @@ if __name__ == '__main__':
 
         
         if dmp_spc.DMP_NEW_POS:
-            start_pos = np.array([5.78, -46.9, 75.02, -117.3, -87.5, -53.30])
-            dmp_q.p0 = dmp_spc.J_GOAL_POS_DOWN_B
-            dmp_q.gp = np.deg2rad(start_pos)
+            start_pos = np.deg2rad(np.array([5.78, -54.54, 54.61, -88.50, -87.3, -53.30]))
+            end_pos = np.deg2rad(np.array([5.76,-46.46, 74.44, -116.42, -87.39, -53.33]))
+            dmp_q.p0 = start_pos
+            dmp_q.gp = end_pos
+            
             q_out_new_pos, dq_out_new_pos, ddq_out_new_pos = dmp_q.rollout(t_train, tau, FX=True)
 
 
@@ -139,11 +141,11 @@ if __name__ == '__main__':
                 dmp_spc.add_marker(trans, dmp_spc.getcolor(dmp_spc.DMP_COLOR),env,True)
                 UR5.q = q
                 env.step(dt=0.02)
-            for q in demo_joint:
-                trans = UR5.fkine(q)
-                dmp_spc.add_marker(trans, dmp_spc.getcolor(dmp_spc.DEOM_COLOR),env,True)
-                UR5.q = q
-                env.step(dt=0.02)
+            # for q in demo_joint:
+            #     trans = UR5.fkine(q)
+            #     dmp_spc.add_marker(trans, dmp_spc.getcolor(dmp_spc.DEOM_COLOR),env,True)
+            #     UR5.q = q
+            #     env.step(dt=0.02)
 
             if dmp_spc.DMP_NEW_POS:
                 for q in q_out_new_pos:
