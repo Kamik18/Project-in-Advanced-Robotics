@@ -19,16 +19,19 @@ class DMP_SPC:
         self.bOriention = True
         self.bDifferntTime = True
 
-
         self.DEOM_COLOR = 'orange'
         self.DMP_COLOR = 'blue'
         self.DMP_COLOR_NEW_POS = 'green'
 
         self.DMP_J  = True
         self.DMP_TCP = False
-        self.DMP_NEW_POS = True
-        self.TRAINING_TIME = 10.0
-        self.DMP_TIME = 10.0
+        self.DMP_NEW_POS = False
+
+        self.RUN_DOWN_A = True
+        self.RUN_DOWN_B = False
+        self.RUN_UP_A = False
+        self.RUN_UP_B = False
+        
 
         self.J_GOAL_POS_UP_A= np.array([-79.52, -30.42, 83.56, -56.42, -56.13, 2.97])
         self.J_GOAL_POS_UP_A = np.deg2rad(self.J_GOAL_POS_UP_A)
@@ -36,15 +39,40 @@ class DMP_SPC:
         self.J_GOAL_POS_UP_B = np.array([4.49, -18.11, 18.78, -94.43, -88.82, 107.88])
         self.J_GOAL_POS_UP_B = np.deg2rad(self.J_GOAL_POS_UP_B)
 
-        self.J_GOAL_POS_A_PICK = np.array([-1.477736775075094,-1.6750246487059535,2.171894375477926,-2.002197404901022,-1.5889580885516565,0.696304976940155
-        ])
+        self.J_GOAL_POS_DOWN_A = np.array([])
+        self.J_GOAL_POS_DOWN_B = np.array([])
 
-        self.J_GOAL_POS_B_PICK = np.array([0.8,-1.6359934133342286,1.779691282855433,-1.724114094176234,-1.585386101399557,-2.436488215123312
-        ])
 
-        self.J_GOAL_POS  = self.J_GOAL_POS_UP_B
+        
+        if self.RUN_DOWN_A:
+            self.TRAINING_TIME = 10.0
+            self.DMP_TIME = 10.0
+            self.FileName = 'Records/DOWN_A/20/'
+            if self.DMP_NEW_POS:
+                self.J_GOAL_POS  = self.J_GOAL_POS_DOWN_A
+                
+        
+        if self.RUN_DOWN_B:
+            self.TRAINING_TIME = 5.0
+            self.DMP_TIME = 5.0
+            self.FileName = 'Records/DOWN_B/20/'
+            if self.DMP_NEW_POS:
+                self.J_GOAL_POS  = self.J_GOAL_POS_DOWN_B
 
-        self.FileName = 'Records/UP_B/20/'
+        if self.RUN_UP_A:
+            self.TRAINING_TIME = 10.0
+            self.DMP_TIME = 10.0
+            self.FileName = 'Records/UP_A/20/'
+            if self.DMP_NEW_POS:
+                self.J_GOAL_POS  = self.J_GOAL_POS_UP_A
+
+        if self.RUN_UP_B:
+            self.TRAINING_TIME = 5.0
+            self.DMP_TIME = 5.0
+            self.FileName = 'Records/UP_B/20/'
+            if self.DMP_NEW_POS:
+                self.J_GOAL_POS  = self.J_GOAL_POS_UP_B
+        
         self.sOutPath = 'Python/DMP/Out/'
 
     
@@ -250,7 +278,7 @@ class DMP_SPC:
         
         return result_quat_array
 
-    def read_out_file(self,skip_lines=1):
+    def read_out_file(self,skip_lines=5):
         """Read output files.
 
         Returns:
@@ -296,7 +324,6 @@ class DMP_SPC:
 
         return down_a, down_b, up_a, up_b
 
-
     def getcolor(self,color):
 
         if color  == 'red':
@@ -309,7 +336,7 @@ class DMP_SPC:
             return [1, 0.5, 0]
         
     def plot_traj_profile(self, joint_list_demo, dmp_joint_q):
-        title = 'Trajectory Profile-Joint Space'
+        title = 'Position Profile-Joint Space'
         DEMO_LABEL = 'Demo'
         DMP_LABEL = 'DMP'
         DMP_COLOR = self.getcolor(self.DMP_COLOR)
@@ -363,7 +390,7 @@ class DMP_SPC:
         axs[5].set_ylabel('$q_6$ [$rad$]')
         axs[5].legend()
 
-        title = 'Trajectory Profile-Joint Space Velocity'
+        title = 'Velocity Profile-Joint Space'
         fig2, axs = plt.subplots(6, 1, sharex=True)
         fig2.suptitle(title, fontsize=16)
         axs[0].plot(joint_demo_dq[:, 0], '--', label=DEMO_LABEL, color=DEOM_COLOR)
@@ -397,7 +424,7 @@ class DMP_SPC:
         axs[5].set_ylabel('$q_6$ [$rad/s$]')
         axs[5].legend()
 
-        title = 'Trajectory Profile-Joint Space Acceleration'
+        title = 'Acceleration Profile-Joint Space'
         fig3, axs = plt.subplots(6, 1, sharex=True)
         fig3.suptitle(title, fontsize=16)
         axs[0].plot(joint_demo_ddq[:, 0], '--', label=DEMO_LABEL, color=DEOM_COLOR)

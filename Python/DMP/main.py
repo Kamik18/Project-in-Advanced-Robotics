@@ -12,28 +12,30 @@ from spatialmath.base import q2r
 import swift
 import spatialgeometry as sg
 import DMP_Global as dmp_spc
-import math
-
 
 
 
 if __name__ == '__main__':
 
     dmp_spc = dmp_spc.DMP_SPC()    
-    demo,demo_joint = dmp_spc.read_demo_files(dmp_spc.FileName, skip_lines=50)
-
-    N = 100
-    cs_alpha = -np.log(0.0001)
-    tau = dmp_spc.TRAINING_TIME
-    t_train = np.arange(0, tau, dmp_spc.TRAINING_TIME/ len(demo_joint))
-   
     
+    demo,demo_joint = dmp_spc.read_demo_files(dmp_spc.FileName, skip_lines=10)
+
+    print('demo_tcp: ', demo.shape)
+    print('demo_joint: ', demo_joint.shape)
+
+
+    N = 50
+    cs_alpha = -np.log(0.0001)
+   
    
     if dmp_spc.DMP_J:
-        
+        tau = dmp_spc.TRAINING_TIME
+        t_train = np.arange(0, tau, dmp_spc.TRAINING_TIME/ len(demo_joint))
+        ## encode DMP 
         tau = dmp_spc.DMP_TIME 
         t = np.arange(0, tau, dmp_spc.DMP_TIME / len(demo_joint))
-    
+
         ## encode DMP 
         dmp_q = JointDMP(NDOF=6,n_bfs=N, alpha=48, beta=12, cs_alpha=cs_alpha)
         dmp_q.p0 = demo_joint[0].copy()
@@ -41,9 +43,10 @@ if __name__ == '__main__':
         dmp_q.train(demo_joint, t_train, tau)
 
         ## integrate DMP
-
         q_out, dq_out, ddq_out = dmp_q.rollout(t_train, tau, FX=True)
         
+        dmp_spc.plot_traj_profile(demo_joint,q_out)
+
         
         if dmp_spc.DMP_NEW_POS:
             dmp_q.gp = dmp_spc.J_GOAL_POS
