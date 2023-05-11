@@ -12,7 +12,7 @@ import time
 from Python.Gripper.RobotiqGripper import RobotiqGripper
 import Python.GMM.GMM as GMM
 import threading
-import math
+import Python.DMP.DMP_Global as DMP
 
 
 RUNNING: bool = True
@@ -129,10 +129,9 @@ def getData(method: str = "") -> tuple:
         tuple: Tuple containing the data for the four paths
     """
     if method == "DMP":
-        up_b_j = np.loadtxt("Python/DMP/Out/DMP_Joint_UP_B_smoothing.txt", delimiter=",")[::5]
-        down_b_j = np.loadtxt("Python/DMP/Out/DMP_Joint_DOWN_B_smoothing.txt", delimiter=",")[::3]
-        up_a_j = np.loadtxt("Python/DMP/Out/DMP_Joint_Up_A_smoothing.txt", delimiter=",")[::10]
-        down_a_j = np.loadtxt("Python/DMP/Out/DMP_Joint_DOWN_A_smoothing.txt", delimiter=",")[::5]        
+        dmp_spec = DMP.DMP_SPC()
+        down_a_j, down_b_j,up_a_j, up_b_j = dmp_spec.read_out_file()
+         
     elif method == "GMM":
         data: np.ndarray = GMM.fetch_data_from_records(path="Records/Up_B/**/record_j.txt", skip_size=50)
         GMM_translation: GMM = GMM.GMM(data=data, n_components=8)
@@ -253,6 +252,8 @@ def log():
             exit(1)
 
 def runRobot(speed,move_to_pickup, move_insert_return, return_to_home):
+    global RUNNING
+    
     #run robot
     rtde_c = RTDEControl(IP)
     print("Starting RTDE test script...")
@@ -314,7 +315,7 @@ blendClass = Blend(UR5=UR5, box=box)
 q0 =  np.array([0, -np.pi / 2, np.pi / 2, -np.pi / 2, -np.pi / 2, -np.pi / 2])
 UR5.q = q0
 
-swiftEnv = True
+swiftEnv = False
 if swiftEnv:
     env = swift.Swift()
     env.launch(realtime=True)
@@ -333,8 +334,8 @@ up_b_j, down_b_j, up_a_j, down_a_j = getData("DMP")
 move_to_pickup, move_insert_return, return_to_home = blendPath(swiftEnv)
 
 
-speed = 0.1
-#runRobot(speed, move_to_pickup, move_insert_return, return_to_home)
+speed = 0.3
+runRobot(speed, move_to_pickup, move_insert_return, return_to_home)
 
 exit(1)
 def create_outer_ellipsoid(tcp, xr, yr, zr, num_points=1000):
