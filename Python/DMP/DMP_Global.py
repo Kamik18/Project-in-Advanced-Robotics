@@ -256,7 +256,7 @@ class DMP_SPC:
         Returns:
             np.array: down_a, down_b, up_a, up_b
         """
-        skip_lines=2
+        
         tuples =[]
         with open("Python/DMP/Out/DOWN_A_smoothing.txt", "r") as f:
             for i, line in enumerate(f):
@@ -265,7 +265,7 @@ class DMP_SPC:
                     values = tuple(map(float, line.split(',')))
                     tuples.append(values)
         down_a = np.array(tuples)
-        skip_lines=1
+        
         tuples =[]
         with open("Python/DMP/Out/DOWN_B_smoothing.txt", "r") as f:
             for i, line in enumerate(f):
@@ -274,7 +274,7 @@ class DMP_SPC:
                     values = tuple(map(float, line.split(',')))
                     tuples.append(values)
         down_b = np.array(tuples)
-        skip_lines=2
+        
         tuples =[]
         with open("Python/DMP/Out/UP_A_smoothing.txt", "r") as f:
             for i, line in enumerate(f):
@@ -283,7 +283,7 @@ class DMP_SPC:
                     values = tuple(map(float, line.split(',')))
                     tuples.append(values)
         up_a = np.array(tuples)
-        skip_lines=1
+        
         tuples =[]
         with open("Python/DMP/Out/UP_B_smoothing.txt", "r") as f:
             for i, line in enumerate(f):

@@ -130,7 +130,7 @@ def getData(method: str = "") -> tuple:
     """
     if method == "DMP":
         dmp_spec = DMP.DMP_SPC()
-        down_a_j, down_b_j,up_a_j, up_b_j = dmp_spec.read_out_file()
+        down_a_j, down_b_j,up_a_j, up_b_j = dmp_spec.read_out_file(skip_lines=5)
          
     elif method == "GMM":
         data: np.ndarray = GMM.fetch_data_from_records(path="Records/Up_B/**/record_j.txt", skip_size=50)
@@ -158,6 +158,70 @@ def getData(method: str = "") -> tuple:
     return up_b_j, down_b_j, up_a_j, down_a_j
 
 def blendPath(plot: bool = False):
+    try:
+        def reduce_dist(prev_point: np.ndarray, curr_point: np.ndarray, cov: np.ndarray) -> np.ndarray:
+            cov *= 1.95
+            for i in range(len(prev_point)):
+                if (prev_point[i] - curr_point[i]) > cov[i]:
+                    curr_point[i] += cov[i]
+                elif (prev_point[i] - curr_point[i]) < -cov[i]:
+                    curr_point[i] -= cov[i]
+                else:
+                    # Reduce the distance
+                    curr_point[i] = (prev_point[i] + curr_point[i]) / 2
+                    
+            return curr_point
+
+        # Optimize up_b_j
+        # Flip up_b_j and the covariance
+        up_b_j = np.flip(up_b_j, axis=0)
+        cov_up_b = np.flip(cov_up_b, axis=0)
+        # Reduce the first point in the up_b_j path to the next with the covariance
+        up_b_j[0] = reduce_dist(prev_point=down_b_j[0], curr_point=up_b_j[0], cov=cov_up_b[0])
+        for i in range(1, len(up_b_j)):
+            up_b_j[i] = reduce_dist(prev_point=up_b_j[i-1], curr_point=up_b_j[i], cov=cov_up_b[i])
+        # Flip up_b_j and the covariance
+        up_b_j = np.flip(up_b_j, axis=0)
+        cov_up_b = np.flip(cov_up_b, axis=0)
+
+        # Optimize down_b_j
+        # Flip down_b_j and the covariance
+        down_b_j = np.flip(down_b_j, axis=0)
+        cov_down_b = np.flip(cov_down_b, axis=0)
+        # Reduce the first point in the down_b_j path to the next with the covariance
+        down_b_j[0] = reduce_dist(prev_point=up_a_j[0], curr_point=down_b_j[0], cov=cov_down_b[0])
+        for i in range(1, len(down_b_j)):
+            down_b_j[i] = reduce_dist(prev_point=down_b_j[i-1], curr_point=down_b_j[i], cov=cov_down_b[i])
+        # Flip down_b_j and the covariance
+        down_b_j = np.flip(down_b_j, axis=0)
+        cov_down_b = np.flip(cov_down_b, axis=0)
+
+        # Optimize up_a_j
+        # Flip up_a_j and the covariance
+        up_a_j = np.flip(up_a_j, axis=0)
+        cov_up_a = np.flip(cov_up_a, axis=0)
+        # Reduce the first point in the up_a_j path to the next with the covariance
+        up_a_j[0] = reduce_dist(prev_point=down_a_j[0], curr_point=up_a_j[0], cov=cov_up_a[0])
+        for i in range(1, len(up_a_j)):
+            up_a_j[i] = reduce_dist(prev_point=up_a_j[i-1], curr_point=up_a_j[i], cov=cov_up_a[i])
+        # Flip up_a_j and the covariance
+        up_a_j = np.flip(up_a_j, axis=0)
+        cov_up_a = np.flip(cov_up_a, axis=0)
+
+        # Optimize down_a_j
+        # Flip down_a_j and the covariance
+        down_a_j = np.flip(down_a_j, axis=0)
+        cov_down_a = np.flip(cov_down_a, axis=0)
+        # Reduce the first point in the down_a_j path to the next with the covariance
+        down_a_j[0] = reduce_dist(prev_point=q0, curr_point=down_a_j[0], cov=cov_down_a[0])
+        for i in range(1, len(down_a_j)):
+            down_a_j[i] = reduce_dist(prev_point=down_a_j[i-1], curr_point=down_a_j[i], cov=cov_down_a[i])
+        # Flip down_a_j and the covariance
+        down_a_j = np.flip(down_a_j, axis=0)
+        cov_down_a = np.flip(cov_down_a, axis=0)
+    except:
+        pass
+
     # Connection paths
     home_to_start = blendClass.makeTraj(q0, up_b_j[0])
     return_to_start = blendClass.makeTraj(down_b_j[-1], q0)
@@ -315,7 +379,7 @@ blendClass = Blend(UR5=UR5, box=box)
 q0 =  np.array([0, -np.pi / 2, np.pi / 2, -np.pi / 2, -np.pi / 2, -np.pi / 2])
 UR5.q = q0
 
-swiftEnv = False
+swiftEnv = True
 if swiftEnv:
     env = swift.Swift()
     env.launch(realtime=True)
@@ -328,14 +392,21 @@ if swiftEnv:
 
 up_b_j, down_b_j, up_a_j, down_a_j = getData("DMP")
 #up_b_j, down_b_j, up_a_j, down_a_j, cov_up_b, cov_down_b, cov_up_a, cov_down_a = getData("GMM")
-# up_b_j, down_b_j, up_a_j, down_a_j = getData()       
+#up_b_j, down_b_j, up_a_j, down_a_j = getData()       
+print('up_b_j', up_b_j.shape)
+print('down_b_j', down_b_j.shape)
+print('up_a_j', up_a_j.shape)
+print('down_a_j', down_a_j.shape)
+
+
 
 #move_to_pickup, move_insert_return, return_to_home = oriPath(swiftEnv)
 move_to_pickup, move_insert_return, return_to_home = blendPath(swiftEnv)
 
 
 speed = 0.3
-runRobot(speed, move_to_pickup, move_insert_return, return_to_home)
+if not swiftEnv:
+    runRobot(speed, move_to_pickup, move_insert_return, return_to_home)
 
 exit(1)
 def create_outer_ellipsoid(tcp, xr, yr, zr, num_points=1000):
