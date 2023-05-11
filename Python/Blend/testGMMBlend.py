@@ -131,7 +131,7 @@ def getData(method: str = "") -> tuple:
     if method == "DMP":
         dmp_spec = DMP.DMP_SPC()
         down_a_j, down_b_j,up_a_j, up_b_j = dmp_spec.read_out_file(skip_lines=5)
-        down_b_j = dmp_spec.read_out_new_pos_file(skip_lines=3,DOWN_B=True, UP_B=False, UP_A=False, DOWN_A=False)
+        down_b_j = dmp_spec.read_out_new_pos_file(skip_lines=1,DOWN_B=True, UP_B=False, UP_A=False, DOWN_A=False)
         up_b_j = dmp_spec.read_out_new_pos_file(skip_lines=5,UP_B=True, DOWN_B=False, UP_A=False, DOWN_A=False)
          
     elif method == "GMM":
@@ -394,7 +394,7 @@ blendClass = Blend(UR5=UR5, box=box)
 q0 =  np.array([0, -np.pi / 2, np.pi / 2, -np.pi / 2, -np.pi / 2, -np.pi / 2])
 UR5.q = q0
 
-swiftEnv = False
+swiftEnv = True
 if swiftEnv:
     env = swift.Swift()
     env.launch(realtime=True)
@@ -410,7 +410,7 @@ if swiftEnv:
 move_to_pickup, move_insert_return, return_to_home = blendPath(swiftEnv)
 
 
-speed = 0.1
+speed = 0.3
 if not swiftEnv:
     runRobot(speed, move_to_pickup, move_insert_return, return_to_home)
 
