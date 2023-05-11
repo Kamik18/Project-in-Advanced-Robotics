@@ -158,7 +158,12 @@ def getData(method: str = "") -> tuple:
     return up_b_j, down_b_j, up_a_j, down_a_j
 
 def blendPath(plot: bool = False):
+    up_b_j_dmp, down_b_j_dmp, up_a_j_dmp, down_a_j_dmp = getData("DMP")
+    up_b_j, down_b_j, up_a_j, down_a_j, cov_up_b, cov_down_b, cov_up_a, cov_down_a = getData("GMM")
+    #up_b_j, down_b_j, up_a_j, down_a_j = getData()       
+
     try:
+        print(type(cov_up_b))
         def reduce_dist(prev_point: np.ndarray, curr_point: np.ndarray, cov: np.ndarray) -> np.ndarray:
             cov *= 1.95
             for i in range(len(prev_point)):
@@ -219,8 +224,16 @@ def blendPath(plot: bool = False):
         # Flip down_a_j and the covariance
         down_a_j = np.flip(down_a_j, axis=0)
         cov_down_a = np.flip(cov_down_a, axis=0)
-    except:
-        pass
+    except Exception as e:
+        print(e)
+
+
+    # Merge the paths
+    up_b_j = up_b_j_dmp
+    down_b_j = down_b_j_dmp
+    #up_a_j = up_a_j_dmp
+    #down_a_j = down_a_j_dmp
+
 
     # Connection paths
     home_to_start = blendClass.makeTraj(q0, up_b_j[0])
@@ -379,7 +392,7 @@ blendClass = Blend(UR5=UR5, box=box)
 q0 =  np.array([0, -np.pi / 2, np.pi / 2, -np.pi / 2, -np.pi / 2, -np.pi / 2])
 UR5.q = q0
 
-swiftEnv = True
+swiftEnv = False
 if swiftEnv:
     env = swift.Swift()
     env.launch(realtime=True)
@@ -390,21 +403,12 @@ if swiftEnv:
     # Move the robot to the start position
     env.step()
 
-up_b_j, down_b_j, up_a_j, down_a_j = getData("DMP")
-#up_b_j, down_b_j, up_a_j, down_a_j, cov_up_b, cov_down_b, cov_up_a, cov_down_a = getData("GMM")
-#up_b_j, down_b_j, up_a_j, down_a_j = getData()       
-print('up_b_j', up_b_j.shape)
-print('down_b_j', down_b_j.shape)
-print('up_a_j', up_a_j.shape)
-print('down_a_j', down_a_j.shape)
-
-
 
 #move_to_pickup, move_insert_return, return_to_home = oriPath(swiftEnv)
 move_to_pickup, move_insert_return, return_to_home = blendPath(swiftEnv)
 
 
-speed = 0.3
+speed = 0.1
 if not swiftEnv:
     runRobot(speed, move_to_pickup, move_insert_return, return_to_home)
 
