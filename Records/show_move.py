@@ -4,14 +4,9 @@ from scipy.spatial.transform import Rotation
 
 import numpy as np
 
-PATH :str = "Records/experiments"
+PATH :str = "Records/experiments/DMP"
 TIME:int = 0.02
 
-# Function handler for button and slider
-def on_button_click(event):
-    import signal
-    print("Stop button clicked")
-    exit()
 
 # Create the figure and axis
 fig = plt.figure(constrained_layout=False)
@@ -25,11 +20,6 @@ fig.subplots_adjust(hspace=0.75)
 # Create subplots for translation and rotation
 ax1 = fig.add_subplot(2, 1, 1)
 ax2 = fig.add_subplot(2, 1, 2)
-
-# Create the button and add it to the plot
-button_ax = plt.axes([0.05, 0.9, 0.03, 0.05])
-button = Button(button_ax, "Stop")
-button.on_clicked(on_button_click)
 
 keys = ["j1", "j2", "j3", "j4", "j5", "j6"]
 
@@ -114,4 +104,7 @@ for ax in (ax1, ax2):
     ax.relim()
     ax.autoscale_view()
 
+
+# Print the time with 2 digits
+print(f"Time: {x_data[-1]:.2f}")
 plt.show()
