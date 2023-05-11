@@ -231,8 +231,8 @@ def blendPath(plot: bool = False):
     # Merge the paths
     up_b_j = up_b_j_dmp
     down_b_j = down_b_j_dmp
-    #up_a_j = up_a_j_dmp
-    #down_a_j = down_a_j_dmp
+    up_a_j = up_a_j_dmp
+    down_a_j = down_a_j_dmp
 
 
     # Connection paths
