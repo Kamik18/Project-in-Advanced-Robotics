@@ -48,8 +48,9 @@ if __name__ == '__main__':
 
         
         if dmp_spc.DMP_NEW_POS:
-            dmp_q.p0 = dmp_spc.J_GOAL_POS_UP_B
-            dmp_q.gp = dmp_spc.J_GOAL_POS
+            start_pos = np.array([5.78, -46.9, 75.02, -117.3, -87.5, -53.30])
+            dmp_q.p0 = dmp_spc.J_GOAL_POS_DOWN_B
+            dmp_q.gp = np.deg2rad(start_pos)
             q_out_new_pos, dq_out_new_pos, ddq_out_new_pos = dmp_q.rollout(t_train, tau, FX=True)
 
 
