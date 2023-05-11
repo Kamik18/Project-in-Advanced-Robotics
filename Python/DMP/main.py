@@ -24,8 +24,7 @@ if __name__ == '__main__':
     print('demo_tcp: ', demo.shape)
     print('demo_joint: ', demo_joint.shape)
 
-
-    N = 50
+    N = 100
     cs_alpha = -np.log(0.0001)
    
    
@@ -49,6 +48,7 @@ if __name__ == '__main__':
 
         
         if dmp_spc.DMP_NEW_POS:
+            dmp_q.p0 = dmp_spc.J_GOAL_POS_UP_B
             dmp_q.gp = dmp_spc.J_GOAL_POS
             q_out_new_pos, dq_out_new_pos, ddq_out_new_pos = dmp_q.rollout(t_train, tau, FX=True)
 

@@ -25,10 +25,10 @@ class DMP_SPC:
 
         self.DMP_J  = True
         self.DMP_TCP = False
-        self.DMP_NEW_POS = False
+        self.DMP_NEW_POS = True
 
-        self.RUN_DOWN_A = True
-        self.RUN_DOWN_B = False
+        self.RUN_DOWN_A = False
+        self.RUN_DOWN_B = True
         self.RUN_UP_A = False
         self.RUN_UP_B = False
         
@@ -40,7 +40,7 @@ class DMP_SPC:
         self.J_GOAL_POS_UP_B = np.deg2rad(self.J_GOAL_POS_UP_B)
 
         self.J_GOAL_POS_DOWN_A = np.array([])
-        self.J_GOAL_POS_DOWN_B = np.array([])
+        self.J_GOAL_POS_DOWN_B = np.array([0.300169,-1.672241,1.561409,-1.428667,-1.595302,-2.834139])
 
 
         
@@ -323,6 +323,28 @@ class DMP_SPC:
 
 
         return down_a, down_b, up_a, up_b
+
+    def read_out_new_pos_file(self, DOWN_A ,DOWN_B, UP_A, UP_B, skip_lines=5):
+        if DOWN_A:
+            spath = "Python\DMP\Out\DOWN_A_new_goal_pos.txt"
+        if DOWN_B:
+            spath = "Python\DMP\Out\DOWN_B_new_goal_pos.txt"
+        if UP_A:
+            spath = "Python\DMP\Out\UP_A_new_goal_pos.txt"
+        if UP_B:
+            spath = "Python\DMP\Out\UP_B_new_goal_pos.txt"
+
+        tuples =[]
+        with open(spath, "r") as f:
+            for i, line in enumerate(f):
+                # Check if the line number is a multiple of skip_lines-1
+                if i % skip_lines == skip_lines-1:
+                    values = tuple(map(float, line.split(',')))
+                    tuples.append(values)
+        res = np.array(tuples)
+
+        return res
+
 
     def getcolor(self,color):
 
