@@ -4,7 +4,7 @@ import numpy as np
 import swift
 import time
 from spatialmath import SE3
-from spatialmath.base import *
+from spatialmath.base import r2x, x2r
 import spatialgeometry as sg
 from cmath import pi, sqrt
 #import transforms3d.quaternions as txq
@@ -627,7 +627,7 @@ class Blend():
         
         return np.concatenate([traj1[:-bsize1,:], trans, traj2[bsize2:,:]])
 
-    def blendJointTraj2(self, traj1, traj2, points, dur: int=2, bsize1: int =20, bsize2: int = 20, plot: bool=True):       
+    def blend_with_viapoints(self, traj1, traj2, points, dur: int=2, bsize1: int =20, bsize2: int = 20, plot: bool=True):       
         """
         Args:
         - traj1 (np.ndarray): array with x,y,z and rx,ry,rz
@@ -675,6 +675,103 @@ class Blend():
         for i in range(len(res_j0[4])):
             trans[i] = np.array([res_j0[4][i],res_j1[4][i],res_j2[4][i], res_j3[4][i],res_j4[4][i],res_j5[4][i]])
         
+
+        if plot:
+            """
+            fig, (ax0, ax1, ax2, ax3, ax4, ax5) = plt.subplots(nrows=6, ncols=1,figsize=(10,8))
+            # Plot points and generated line for each axis
+            ax0.plot(res_j0[2],via_j0,'*',res_j0[3],trans[:,0], label='x')
+            ax0.legend()
+            ax1.plot(res_j1[2],via_j1,'*',res_j1[3],trans[:,1], label='y')
+            ax1.legend()
+            ax2.plot(res_j2[2],via_j2,'*',res_j2[3],trans[:,2], label='z')
+            ax2.legend()
+            ax3.plot(res_j3[2],via_j3,'*',res_j3[3],trans[:,3], label='z')
+            ax3.legend()
+            ax4.plot(res_j4[2],via_j4,'*',res_j4[3],trans[:,4], label='ry')
+            ax4.legend()
+            ax5.plot(res_j5[2],via_j5,'*',res_j5[3],trans[:,5], label='rz')
+            ax5.legend()
+            
+            """
+            tcp1 = self.UR5.fkine(traj1[-bsize1,:])
+            tcp2 = self.UR5.fkine(traj2[0,:])
+            tcp3 = self.UR5.fkine(traj2[bsize2,:])
+            trans1=np.concatenate([traj1,traj2])
+            
+            #tcp = self.UR5.fkine(traj1[-bsize1,:])
+            R_arr = tcp1.R
+            xyz_rot = r2x(R_arr, 'eul')
+            print('rx',xyz_rot)
+            down_b: np.ndarray = np.loadtxt("./Records/Down_B/1/record_tcp.txt", delimiter=',', skiprows=0)[::50]
+            print('down_b',down_b[-20,3:6])
+            # Plot TCP
+            fig, (ax0, ax1, ax2, ax3, ax4, ax5) = plt.subplots(nrows=6, ncols=1,figsize=(10,8))
+            # Plot points and generated line for each axis
+            x_vals = np.linspace(0,20, len(trans))#range(len(trans))
+            tcp_vals = []
+            for i in range(len(trans)):
+                tcp = self.UR5.fkine(trans[i])
+                R_arr = tcp.R
+                xyz_rot = r2x(R_arr, "eul")
+                print('rx',xyz_rot[0])
+                tcp_eul = np.concatenate([tcp.t, xyz_rot])
+                tcp_vals.append(tcp_eul)
+                
+            ax0.plot(x_vals, [tcp[0] for tcp in tcp_vals], label='x')
+            ax1.plot(x_vals, [tcp[1] for tcp in tcp_vals], label='y')
+            ax2.plot(x_vals, [tcp[2] for tcp in tcp_vals], label='z')
+            ax3.plot(x_vals, [tcp[3] for tcp in tcp_vals], label='rx')
+            ax4.plot(x_vals, [tcp[4] for tcp in tcp_vals], label='ry')
+            ax5.plot(x_vals, [tcp[5] for tcp in tcp_vals], label='rz')
+            
+            # Calculate TCP for viapoints
+            via_vals = []
+            x_vals = [2.5,7.5,12.5,17.5]
+            for i in range(len(points)):
+                tcp = self.UR5.fkine(points[i])
+                R_arr = tcp.R
+                xyz_rot = r2x(R_arr, "eul")
+                tcp_eul = np.concatenate([tcp.t, xyz_rot])
+                via_vals.append(tcp_eul)
+
+            ax0.plot(x_vals, [via[0] for via in via_vals], '*', label='via_x')
+            ax1.plot(x_vals, [via[1] for via in via_vals], '*', label='via_y')
+            ax2.plot(x_vals, [via[2] for via in via_vals], '*', label='via_z')
+            ax3.plot(x_vals, [via[3] for via in via_vals], '*', label='via_rx')
+            ax4.plot(x_vals, [via[4] for via in via_vals], '*', label='via_ry')
+            ax5.plot(x_vals, [via[5] for via in via_vals], '*', label='via_rz')
+            
+            ax0.legend()
+            ax1.legend()
+            ax2.legend()
+            ax3.legend()
+            ax4.legend()
+            ax5.legend()
+            
+            fig2 = plt.figure(figsize=(10,5))
+            ax2 = fig2.add_subplot(121, projection='3d')
+            ax2.scatter(tcp1.t[0], tcp1.t[1], tcp1.t[2],c='r',marker='o')
+            ax2.scatter(tcp2.t[0], tcp2.t[1], tcp2.t[2],c='b',marker='o')
+            ax2.scatter(tcp3.t[0], tcp3.t[1], tcp3.t[2],c='g',marker='o')
+            for q in trans1:
+                tcp = self.UR5.fkine(q)
+                ax2.scatter(tcp.t[0], tcp.t[1], tcp.t[2],c='r',marker='.')
+            for q in trans:
+                tcp = self.UR5.fkine(q)
+                ax2.scatter(tcp.t[0], tcp.t[1], tcp.t[2],c='g',marker='.')
+            #ax2.scatter(traj2[-1,0], traj2[-1,1], traj2[-1,2],c='yellow',marker='o')
+            ax2.set_xlabel('X')
+            ax2.set_ylabel('Y')
+            ax2.set_zlabel('Z')
+            ax2.set_title('Line through Points')
+            ax2.set_xlim(-1,1)
+            ax2.set_ylim(-1,1)
+            ax2.set_zlim(-1,1)
+            
+            plt.show()
+            exit(1)
+
         return np.concatenate([traj1[:-bsize1,:], trans, traj2[bsize2:,:]])
 
 

@@ -164,7 +164,7 @@ def blendPath(plot: bool = False):
     up_b_j_dmp, down_b_j_dmp, up_a_j_dmp, down_a_j_dmp = getData("DMP")
     up_b_j, down_b_j, up_a_j, down_a_j, cov_up_b, cov_down_b, cov_up_a, cov_down_a = getData("GMM")
     #up_b_j, down_b_j, up_a_j, down_a_j = getData()       
-
+    
     try:
         print(type(cov_up_b))
         def reduce_dist(prev_point: np.ndarray, curr_point: np.ndarray, cov: np.ndarray) -> np.ndarray:
@@ -230,25 +230,26 @@ def blendPath(plot: bool = False):
     except Exception as e:
         print(e)
 
-
+    
     # Merge the paths
     #up_b_j = up_b_j_dmp
     #down_b_j = down_b_j_dmp
-    up_a_j = up_a_j_dmp
-    down_a_j = down_a_j_dmp
-    print(up_a_j.shape)
-    print(down_a_j.shape)
+    #up_a_j = up_a_j_dmp
+    #down_a_j = down_a_j_dmp
 
-
+    up_b_j, down_b_j, up_a_j, down_a_j= getData()
     # Connection paths
     home_to_start = blendClass.makeTraj(q0, up_b_j[0])
     return_to_start = blendClass.makeTraj(down_b_j[-1], q0)
 
     move_to_pickup = blendClass.blendJointTraj(home_to_start.q, up_b_j, 5, plot=False)
-    blendedPath2 = blendClass.blendJointTraj2(down_b_j, up_a_j, 
+    
+    blendedPath2 = blendClass.blend_with_viapoints(down_b_j, up_a_j, 
                                             np.array([down_b_j[-20], down_b_j[-1], up_a_j[0], up_a_j[20]]),
-                                            5, plot=False)
-    blendedPath3 = blendClass.blendJointTraj2(down_a_j, up_b_j, 
+                                            5, plot=True)
+    
+    exit(1)
+    blendedPath3 = blendClass.blend_with_viapoints(down_a_j, up_b_j, 
                                             np.array([down_a_j[-20], down_a_j[-1], up_b_j[0],up_b_j[20]]), 
                                             5, plot=False)
     return_to_home = blendClass.blendJointTraj(down_b_j, return_to_start.q, 5, plot=False)
@@ -291,6 +292,7 @@ def blendPath(plot: bool = False):
     return move_to_pickup, move_insert_return, return_to_home
 
 def oriPath(plot : bool = False):
+    up_b_j, down_b_j, up_a_j, down_a_j, _, _, _, _ = getData("GMM")
     home_to_start = blendClass.makeTraj(q0, up_b_j[0])
     return_to_start = blendClass.makeTraj(down_b_j[-1], q0)
     connection_b_a = blendClass.makeTraj(down_b_j[-1], up_a_j[0])
@@ -389,7 +391,6 @@ def runRobot(speed,move_to_pickup, move_insert_return, return_to_home):
     rtde_c.stopScript()
     rtde_c.disconnect()
 
-
 # Standard environment
 box = Cuboid([1,1,-0.10], base=SE3(0.30,0.34,-0.05), color=[0,0,1])
 UR5 = rtb.models.UR5()
@@ -397,7 +398,7 @@ blendClass = Blend(UR5=UR5, box=box)
 q0 =  np.array([0, -np.pi / 2, np.pi / 2, -np.pi / 2, -np.pi / 2, -np.pi / 2])
 UR5.q = q0
 
-swiftEnv = True
+swiftEnv = False
 if swiftEnv:
     env = swift.Swift()
     env.launch(realtime=True)
@@ -412,82 +413,8 @@ if swiftEnv:
 #move_to_pickup, move_insert_return, return_to_home = oriPath(swiftEnv)
 move_to_pickup, move_insert_return, return_to_home = blendPath(swiftEnv)
 
-
+exit(1)
 speed = 0.1
 if not swiftEnv:
     runRobot(speed, move_to_pickup, move_insert_return, return_to_home)
-
-exit(1)
-def create_outer_ellipsoid(tcp, xr, yr, zr, num_points=1000):
-    """
-    Create an ellipsoid with specified center and radii and return only the outer points.
-    
-    Args:
-    - xc, yc, zc: coordinates of the center of the ellipsoid
-    - xr, yr, zr: radii of the ellipsoid along the x, y, and z axes
-    - num_points: number of points to generate (default: 100)
-    
-    Returns:
-    - ellipsoid_points: a (N, 3) array of x, y, and z coordinates of the outer ellipsoid points
-    """
-    # Generate random points on a sphere
-    u = np.random.rand(num_points)
-    v = np.random.rand(num_points)
-    theta = 2 * np.pi * u
-    phi = np.arccos(2 * v - 1)
-    
-    # Convert spherical to Cartesian coordinates
-    xc, yc, zc = tcp.t[0], tcp.t[1], tcp.t[2]
-    x = xr * np.sin(phi) * np.cos(theta) + xc
-    y = yr * np.sin(phi) * np.sin(theta) + yc
-    z = zr * np.cos(phi) + zc
-
-    # Append the center point
-    x = np.append(x, xc)
-    y = np.append(y, yc)
-    z = np.append(z, zc)
-    
-    # Calculate distance of each point from the center
-    d = np.sqrt((x - xc)**2 + (y - yc)**2 + (z - zc)**2)
-        
-    return np.column_stack((x, y, z))
-    
-# Create sphere around points based on covariance
-tcp = UR5.fkine(up_b_j[0])
-
-index: int = 15
-print(len(down_b_j))
-print(len(cov_down_b))
-print(down_b_j[index])
-print(cov_down_b[index])
-
-xr, yr, zr = 4, 3, 2
-ellipsoid_points = create_outer_ellipsoid(tcp, xr, yr, zr)
-# Print number of outer points
-print("Number of outer points:", len(ellipsoid_points))
-
-
-
-
-# plot tcp in 3D matplotlib plot   
-fig_paths = plt.figure(figsize=(10, 5))
-ax = fig_paths.add_subplot(111, projection='3d')
-#plot center point
-ax.scatter(tcp.t[0], tcp.t[1], tcp.t[2],c='r',marker='o')
-ax.scatter(ellipsoid_points[:, 0], ellipsoid_points[:, 1], ellipsoid_points[:, 2], c='b', marker='.')
-"""
-# Plot ellipsoid points
-ax.scatter([p[0] for p in ellipsoid_points], 
-           [p[1] for p in ellipsoid_points], 
-           [p[2] for p in ellipsoid_points], 
-           c='b', marker='.')
-"""
-ax.set_xlim([tcp.t[0]-xr-1, tcp.t[0]+xr+1])
-ax.set_ylim([tcp.t[1]-yr-1, tcp.t[1]+yr+1])
-ax.set_zlim([tcp.t[2]-zr-1, tcp.t[2]+zr+1])
-ax.set_xlabel('X')
-ax.set_ylabel('Y')
-ax.set_zlabel('Z')
-plt.show()
-
 
