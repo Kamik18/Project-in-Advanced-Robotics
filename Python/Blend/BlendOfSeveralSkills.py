@@ -9,7 +9,8 @@ from Blend import Blend
 from rtde_control import RTDEControlInterface as RTDEControl
 from rtde_receive import RTDEReceiveInterface as RTDEReceive
 import time
-from Python.Gripper.RobotiqGripper import RobotiqGripper
+import Python.Gripper.RobotiqGripper as RobotiqGripper
+#from Python.Gripper.RobotiqGripper import RobotiqGripper
 import Python.GMM.GMM as GMM
 import threading
 import Python.DMP.DMP_Global as DMP
