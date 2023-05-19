@@ -8,7 +8,7 @@ from canonical_system import CanonicalSystem
 
 
 class JointDMP:
-    def __init__(self, NDOF: int = 7, n_bfs: int = 10, alpha: float = 48.0, beta: float = Union[float, None],
+    def __init__(self, NDOF: int = 6, n_bfs: int = 10, alpha: float = 48.0, beta: float = Union[float, None],
                  cs_alpha: Union[float, None] = None, cs: Union[CanonicalSystem, None] = None):
         self.NDOF = NDOF
         self.n_bfs = n_bfs
@@ -18,14 +18,8 @@ class JointDMP:
 
         # Centres of the Gaussian basis functions
         self.c = np.exp(-self.cs.alpha * np.linspace(0, 1, self.n_bfs))
-
-        # Variance of the Gaussian basis functions
         self.h = 1.0 / np.gradient(self.c)**2
-
-        # Scaling factor
         self.Dp = np.identity(self.NDOF)
-
-        # Initially weights are zero (no forcing term)
         self.w = np.zeros((self.NDOF, self.n_bfs))
 
         # Initial- and goal positions

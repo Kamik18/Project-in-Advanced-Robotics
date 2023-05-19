@@ -131,7 +131,10 @@ def getData(method: str = "") -> tuple:
     """
     if method == "DMP":
         dmp_spec = DMP.DMP_SPC()
-        down_a_j, down_b_j,up_a_j, up_b_j = dmp_spec.read_out_file(skip_lines=5)
+        dmp_data,_ = dmp_spec.maindmp()
+        down_a_j, down_b_j,up_a_j, up_b_j = dmp_data['DOWN_A'], dmp_data['DOWN_B'], dmp_data['UP_A'], dmp_data['UP_B']
+        
+        #down_a_j, down_b_j,up_a_j, up_b_j = dmp_spec.read_out_file(skip_lines=5)
         #down_b_j = dmp_spec.read_out_new_pos_file(skip_lines=1,DOWN_B=True, UP_B=False, UP_A=False, DOWN_A=False)
         #up_b_j = dmp_spec.read_out_new_pos_file(skip_lines=5,UP_B=True, DOWN_B=False, UP_A=False, DOWN_A=False)
          

@@ -35,6 +35,70 @@ def read_demo_files(filename, skip_lines=4):
 
 #print('init_q: ', init_q)
 
+
+import numpy as np
+
+# Open file for reading
+def read_exp_dat(file):
+    with open(file, 'r') as f:
+        # Read lines from file
+        lines = f.readlines()
+
+    # Remove newline characters from each line
+    lines = [line.strip() for line in lines]
+
+    # Convert lines to numpy array
+    data = np.array([np.fromstring(line[1:-1], sep=', ') for line in lines])
+    return data
+
+
+TIME:int = 0.02
+# Read data from file
+data_dmp= read_exp_dat('Records\experiments\GMM_B_DMP_A/acc.txt')
+data_gmm = read_exp_dat('Records\experiments/DMP_B_GMM_A/acc.txt')
+num_points = data_dmp.shape[0]
+time = np.arange(num_points) * 0.02
+
+
+fig, axs = plt.subplots(6, 1,figsize=(6.4, 8.6))
+# plot data
+for i in range(6):
+    axs[i].plot(time, data_dmp[:, i], label='No-blend', color='red' , linewidth=1)
+    if data_gmm.shape[0] > 0:
+         axs[i].plot(time[:data_gmm.shape[0]], data_gmm[:, i], label='blend', color='blue', linewidth=1)
+    axs[i].set_ylabel(f'$q_{i+1} [rad/s^2]$')
+    
+    # Hide the x-axis tick labels for the first five subplots
+    if i < 5:
+        axs[i].set_xticklabels([])
+
+# Set the x-axis label and legend for the last subplot
+axs[5].set_xlabel('Time $[s]$')
+axs[1].legend(loc='upper right')
+
+
+
+for i in range(6):
+    axs[i].grid(False)
+    axs[i].set_facecolor('white')
+
+    # Set the color, linewidth, and edgecolor of the spines to draw a square box around each subplot
+    for spine in axs[i].spines.values():
+        spine.set_color('black')
+        spine.set_linewidth(0.5)
+        spine.set_edgecolor('black')
+
+fig.align_ylabels()
+#plt.savefig('Records\experiments\Fig/blend.pdf', bbox_inches='tight')
+plt.show()
+
+
+
+
+
+
+
+exit(1)
 rtde_c = RTDEControl("192.168.1.131")
 rtde_r = RTDEReceive("192.168.1.131")
 
