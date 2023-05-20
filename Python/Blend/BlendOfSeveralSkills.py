@@ -132,7 +132,7 @@ def getData(method: str = "") -> tuple:
     if method == "DMP":
         dmp_spec = DMP.DMP_SPC()
         dmp_data,_ = dmp_spec.maindmp()
-        down_a_j, down_b_j,up_a_j, up_b_j = dmp_data['DOWN_A'], dmp_data['DOWN_B'], dmp_data['UP_A'], dmp_data['UP_B']
+        down_a_j, down_b_j,up_a_j, up_b_j = dmp_data['Down_A'], dmp_data['Down_B'], dmp_data['Up_A'], dmp_data['Up_B']
         
         #down_a_j, down_b_j,up_a_j, up_b_j = dmp_spec.read_out_file(skip_lines=5)
         #down_b_j = dmp_spec.read_out_new_pos_file(skip_lines=1,DOWN_B=True, UP_B=False, UP_A=False, DOWN_A=False)
@@ -163,8 +163,51 @@ def getData(method: str = "") -> tuple:
         down_a_j: np.ndarray = np.loadtxt("./Records/Down_A/1/record_j.txt", delimiter=',', skiprows=0)[::50]
     return up_b_j, down_b_j, up_a_j, down_a_j
 
+def printGMMcov(stored_traj, desired_traj, comb_traj, comb_traj_opti):
+    #fig2, (ax0, ax1, ax2, ax3, ax4, ax5) = plt.subplots(nrows=6, ncols=2,figsize=(6,8))
+    #fig2, ((ax0, ax0_c), (ax1, ax1_c), (ax2, ax2_c), (ax3, ax3_c), (ax4, ax4_c), (ax5, ax5_c)) = plt.subplots(nrows=6, ncols=2,figsize=(12,8))
+    x_len = np.linspace(0, 2, len(desired_traj))
+    x_len_c = np.linspace(0, 4, len(comb_traj))
+    fig2, ((ax0, ax0_c, ax0_o), (ax1, ax1_c, ax1_o), (ax2, ax2_c, ax2_o), (ax3, ax3_c, ax3_o), (ax4, ax4_c, ax4_o), (ax5, ax5_c, ax5_o)) = plt.subplots(nrows=6, ncols=3,figsize=(15,8))
+    ax0.set_title('Covariance optimization')
+    ax0_c.set_title('Gap between two trajectories')
+    ax0_o.set_title('Optimized gap between two trajectories')
+    ax0.scatter(x_len,desired_traj[:,0], label='j0_bf', marker='.')
+    ax1.scatter(x_len,desired_traj[:,1], label='j1_bf', marker='.')
+    ax2.scatter(x_len,desired_traj[:,2], label='j2_bf', marker='.')
+    ax3.scatter(x_len,desired_traj[:,3], label='j3_bf', marker='.')
+    ax4.scatter(x_len,desired_traj[:,4], label='j4_bf', marker='.')
+    ax5.scatter(x_len,desired_traj[:,5], label='j5_bf', marker='.')
+
+    ax0.scatter(x_len,stored_traj[:,0], label='j0_af', marker='.')
+    ax1.scatter(x_len,stored_traj[:,1], label='j1_af', marker='.')
+    ax2.scatter(x_len,stored_traj[:,2], label='j2_af', marker='.')
+    ax3.scatter(x_len,stored_traj[:,3], label='j3_af', marker='.')
+    ax4.scatter(x_len,stored_traj[:,4], label='j4_af', marker='.')
+    ax5.scatter(x_len,stored_traj[:,5], label='j5_af', marker='.')
+    ax0.legend(); ax1.legend(); ax2.legend(); ax3.legend(); ax4.legend(); ax5.legend()
+    
+    x_len_c = np.linspace(0, 4, len(comb_traj))
+    ax0_c.scatter(x_len_c,comb_traj[:,0], label='j0_bf', marker='.')
+    ax1_c.scatter(x_len_c,comb_traj[:,1], label='j1_bf', marker='.')
+    ax2_c.scatter(x_len_c,comb_traj[:,2], label='j2_bf', marker='.')
+    ax3_c.scatter(x_len_c,comb_traj[:,3], label='j3_bf', marker='.')
+    ax4_c.scatter(x_len_c,comb_traj[:,4], label='j4_bf', marker='.')
+    ax5_c.scatter(x_len_c,comb_traj[:,5], label='j5_bf', marker='.')
+    ax0_c.legend(); ax1_c.legend(); ax2_c.legend(); ax3_c.legend(); ax4_c.legend(); ax5_c.legend()
+
+    ax0_o.scatter(x_len_c,comb_traj_opti[:,0], label='j0_af', marker='.')
+    ax1_o.scatter(x_len_c,comb_traj_opti[:,1], label='j1_af', marker='.')
+    ax2_o.scatter(x_len_c,comb_traj_opti[:,2], label='j2_af', marker='.')
+    ax3_o.scatter(x_len_c,comb_traj_opti[:,3], label='j3_af', marker='.')
+    ax4_o.scatter(x_len_c,comb_traj_opti[:,4], label='j4_af', marker='.')
+    ax5_o.scatter(x_len_c,comb_traj_opti[:,5], label='j5_af', marker='.')
+    ax0_o.legend(); ax1_o.legend(); ax2_o.legend(); ax3_o.legend(); ax4_o.legend(); ax5_o.legend()
+    plt.show()
+    
+
 def blendPath(plot: bool = False):
-    up_b_j_dmp, down_b_j_dmp, up_a_j_dmp, down_a_j_dmp = getData("DMP")
+    #up_b_j_dmp, down_b_j_dmp, up_a_j_dmp, down_a_j_dmp = getData("DMP")
     up_b_j, down_b_j, up_a_j, down_a_j, cov_up_b, cov_down_b, cov_up_a, cov_down_a = getData("GMM")
     #up_b_j, down_b_j, up_a_j, down_a_j = getData()       
     """
@@ -183,25 +226,9 @@ def blendPath(plot: bool = False):
     adddotsjoints(return_to_start.q,(0,0,0))
     env.hold()
     """
-    desired_traj = up_a_j
-    x_len = np.linspace(0, 2, len(desired_traj))
-    fig2, (ax0, ax1, ax2, ax3, ax4, ax5) = plt.subplots(nrows=6, ncols=1,figsize=(6,8))
-    ax0.scatter(x_len,desired_traj[:,0], label='j0_bf', marker='.')
-    ax1.scatter(x_len,desired_traj[:,1], label='j1_bf', marker='.')
-    ax2.scatter(x_len,desired_traj[:,2], label='j2_bf', marker='.')
-    ax3.scatter(x_len,desired_traj[:,3], label='j3_bf', marker='.')
-    ax4.scatter(x_len,desired_traj[:,4], label='j4_bf', marker='.')
-    ax5.scatter(x_len,desired_traj[:,5], label='j5_bf', marker='.')
-    ax0.legend(); ax1.legend(); ax2.legend(); ax3.legend(); ax4.legend(); ax5.legend()
-    fig1, (ax0_c, ax1_c, ax2_c, ax3_c, ax4_c, ax5_c) = plt.subplots(nrows=6, ncols=1,figsize=(6,8))
-    ax0_c.scatter(x_len,cov_up_a[:,0], label='j0_cov', marker='.')
-    ax1_c.scatter(x_len,cov_up_a[:,1], label='j1_cov', marker='.')
-    ax2_c.scatter(x_len,cov_up_a[:,2], label='j2_cov', marker='.')
-    ax3_c.scatter(x_len,cov_up_a[:,3], label='j3_cov', marker='.')
-    ax4_c.scatter(x_len,cov_up_a[:,4], label='j4_cov', marker='.')
-    ax5_c.scatter(x_len,cov_up_a[:,5], label='j5_cov', marker='.')
-    ax0_c.legend(); ax1_c.legend(); ax2_c.legend(); ax3_c.legend(); ax4_c.legend(); ax5_c.legend()
-
+    stored_up = down_a_j
+    stored_down = up_b_j
+    
     try:
         print(type(cov_up_b))
         def reduce_dist(prev_point: np.ndarray, curr_point: np.ndarray, cov: np.ndarray) -> np.ndarray:
@@ -228,7 +255,7 @@ def blendPath(plot: bool = False):
         # Flip up_b_j and the covariance
         up_b_j = np.flip(up_b_j, axis=0)
         cov_up_b = np.flip(cov_up_b, axis=0)
-
+        """
         # Optimize down_b_j
         # Flip down_b_j and the covariance
         down_b_j = np.flip(down_b_j, axis=0)
@@ -240,7 +267,7 @@ def blendPath(plot: bool = False):
         # Flip down_b_j and the covariance
         down_b_j = np.flip(down_b_j, axis=0)
         cov_down_b = np.flip(cov_down_b, axis=0)
-
+        """
         # Optimize up_a_j
         # Flip up_a_j and the covariance
         up_a_j = np.flip(up_a_j, axis=0)
@@ -252,7 +279,7 @@ def blendPath(plot: bool = False):
         # Flip up_a_j and the covariance
         up_a_j = np.flip(up_a_j, axis=0)
         cov_up_a = np.flip(cov_up_a, axis=0)
-
+        """
         # Optimize down_a_j
         # Flip down_a_j and the covariance
         down_a_j = np.flip(down_a_j, axis=0)
@@ -264,21 +291,15 @@ def blendPath(plot: bool = False):
         # Flip down_a_j and the covariance
         down_a_j = np.flip(down_a_j, axis=0)
         cov_down_a = np.flip(cov_down_a, axis=0)
+        """
     except Exception as e:
         print(e)
 
+    printGMMcov(stored_up, down_a_j, np.concatenate([stored_up, stored_down]), np.concatenate([down_a_j, up_b_j]))
     
-    ax0.scatter(x_len,desired_traj[:,0], label='j0_af',marker='.')
-    ax1.scatter(x_len,desired_traj[:,1], label='j1_af',marker='.')
-    ax2.scatter(x_len,desired_traj[:,2], label='j2_af',marker='.')
-    ax3.scatter(x_len,desired_traj[:,3], label='j3_af',marker='.')
-    ax4.scatter(x_len,desired_traj[:,4], label='j4_af',marker='.')
-    ax5.scatter(x_len,desired_traj[:,5], label='j5_af',marker='.')
-    ax0.legend(); ax1.legend(); ax2.legend(); ax3.legend(); ax4.legend(); ax5.legend()
-    plt.show()
-    exit(1)
+    
     # Merge the paths
-    #up_b_j = up_b_j_dmp
+    #up_b_j = up_b_j_dmpWhat 
     #down_b_j = down_b_j_dmp
     #up_a_j = up_a_j_dmp
     #down_a_j = down_a_j_dmp

@@ -7,7 +7,7 @@ from spatialmath import SE3
 from spatialmath.base import q2r   
 import spatialgeometry as sg
 import math
-from dmp_joint import JointDMP
+from Python.DMP.dmp_joint import JointDMP
 
 class DMP_SPC:
 
@@ -46,25 +46,25 @@ class DMP_SPC:
         if index == 0:
             self.TRAINING_TIME = 10.0
             self.DMP_TIME = 10.0
-            self.FileName = 'Records/DOWN_A/20/'
-            skill_name = 'DOWN_A'
+            self.FileName = 'Records/Down_A/20/'
+            skill_name = 'Down_A'
           
         if index == 1:
             self.TRAINING_TIME = 5.0
             self.DMP_TIME = 5.0
-            self.FileName = 'Records/DOWN_B/20/'
-            skill_name = 'DOWN_B'        
+            self.FileName = 'Records/Down_B/20/'
+            skill_name = 'Down_B'        
 
         if index == 2:
             self.TRAINING_TIME = 10.0
             self.DMP_TIME = 10.0
-            self.FileName = 'Records/UP_A/20/'
+            self.FileName = 'Records/Up_A/20/'
             skill_name = 'UP_A'      
 
         if index == 3:
             self.TRAINING_TIME = 5.0
             self.DMP_TIME = 5.0
-            self.FileName = 'Records/UP_B/20/'
+            self.FileName = 'Records/Up_B/20/'
             skill_name = 'UP_B'
         
         return skill_name
@@ -84,16 +84,16 @@ class DMP_SPC:
         beta=12
         
         dict_out:dict = {
-        "DOWN_A": np.array(0),
-        "DOWN_B": np.array(0),
-        "UP_A": np.array(0),
-        "UP_B": np.array(0),
+        "Down_A": np.array(0),
+        "Down_B": np.array(0),
+        "Up_A": np.array(0),
+        "Up_B": np.array(0),
         }
         dict_demo:dict = {
-        "DOWN_A": np.array(0),
-        "DOWN_B": np.array(0),
-        "UP_A": np.array(0),
-        "UP_B": np.array(0),
+        "Down_A": np.array(0),
+        "Down_B": np.array(0),
+        "Up_A": np.array(0),
+        "Up_B": np.array(0),
         }
 
         for i in range(4):
@@ -262,6 +262,7 @@ class DMP_SPC:
         Returns:
             np.array: demo data and demo joint angles data
         """
+
         tuples =[]
         with open(filename + "record_tcp.txt", "r") as f:
             for i, line in enumerate(f):
@@ -326,7 +327,7 @@ class DMP_SPC:
         """
         
         tuples =[]
-        with open("Python/DMP/Out/DOWN_A_smoothing.txt", "r") as f:
+        with open("Python/DMP/Out/Down_A_smoothing.txt", "r") as f:
             for i, line in enumerate(f):
                 # Check if the line number is a multiple of skip_lines-1
                 if i % skip_lines == skip_lines-1:
@@ -335,7 +336,7 @@ class DMP_SPC:
         down_a = np.array(tuples)
         
         tuples =[]
-        with open("Python/DMP/Out/DOWN_B_smoothing.txt", "r") as f:
+        with open("Python/DMP/Out/Down_B_smoothing.txt", "r") as f:
             for i, line in enumerate(f):
                 # Check if the line number is a multiple of skip_lines-1
                 if i % skip_lines == skip_lines-1:
@@ -344,7 +345,7 @@ class DMP_SPC:
         down_b = np.array(tuples)
         
         tuples =[]
-        with open("Python/DMP/Out/UP_A_smoothing.txt", "r") as f:
+        with open("Python/DMP/Out/Up_A_smoothing.txt", "r") as f:
             for i, line in enumerate(f):
                 # Check if the line number is a multiple of skip_lines-1
                 if i % skip_lines == skip_lines-1:
@@ -353,7 +354,7 @@ class DMP_SPC:
         up_a = np.array(tuples)
         
         tuples =[]
-        with open("Python/DMP/Out/UP_B_smoothing.txt", "r") as f:
+        with open("Python/DMP/Out/Up_B_smoothing.txt", "r") as f:
             for i, line in enumerate(f):
                 # Check if the line number is a multiple of skip_lines-1
                 if i % skip_lines == skip_lines-1:
@@ -366,13 +367,13 @@ class DMP_SPC:
 
     def read_out_new_pos_file(self, DOWN_A ,DOWN_B, UP_A, UP_B, skip_lines=5):
         if DOWN_A:
-            spath = "Python/DMP/Out/DOWN_A_new_goal_pos.txt"
+            spath = "Python/DMP/Out/Down_A_new_goal_pos.txt"
         if DOWN_B:
-            spath = "Python/DMP/Out/DOWN_B_new_goal_pos.txt"
+            spath = "Python/DMP/Out/Down_B_new_goal_pos.txt"
         if UP_A:
-            spath = "Python/DMP/Out/UP_A_new_goal_pos.txt"
+            spath = "Python/DMP/Out/Up_A_new_goal_pos.txt"
         if UP_B:
-            spath = "Python/DMP/Out/UP_B_new_goal_pos.txt"
+            spath = "Python/DMP/Out/Up_B_new_goal_pos.txt"
 
         tuples =[]
         with open(spath, "r") as f:

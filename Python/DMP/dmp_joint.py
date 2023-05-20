@@ -4,7 +4,7 @@ from typing import List, Union, Tuple
 
 import numpy as np
 
-from canonical_system import CanonicalSystem
+from Python.DMP.canonical_system import CanonicalSystem
 
 
 class JointDMP:
