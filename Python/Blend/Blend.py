@@ -604,21 +604,20 @@ class Blend():
             
             
             # Plot points and generated line for each axis
-            x_points = [1,2,4]
+            x_points = [2.5,12.5,15]
+            print(res_j0[3].shape)
             tmp = res_j0[3][:len(traj1)]
             print(len(tmp), len(traj1), len(traj2))
             temp = np.concatenate([traj1[:-bsize1,:], trans, traj2[bsize2:,:]])
-            x_len_traj1 = np.linspace(0, 15, len(traj1))
-            x_len_trans = np.linspace(0, 15, len(trans))
-            x_len_traj2 = np.linspace(0, 15, len(traj2))
-            x_len = np.linspace(0, 15, len(temp))
+            x_len_traj1 = np.arange(0, 5, 5/len(traj1))    #np.linspace(0, 15, len(traj1))
+            x_len_trans = np.linspace(0, 14, 35)
+            x_len_traj2 = np.arange(10, 15, 5/len(traj2))#np.linspace(0, 15, len(traj2))
+            x_len = np.arange(0, 15, 15/len(temp)) #np.linspace(0, 15, len(temp))
             print(len(temp))
             #ax02.plot(x_points,via_j0,'*',x_len,temp[:,0], c='g', label='j0')
             #ax02.plot(x_len_traj1,traj1[:,0], x_len_traj2, traj2[:,0], c='c', label='x_ori')
-            ax02.plot(res_j0[2],via_j0,'*',res_j0[3],trans[:,0], c='b', label='j0')
+            #ax02.plot(res_j0[2],via_j0,'*',res_j0[3],trans[:,0], c='b', label='j0')
             ax02.plot(res_j0[3],trans[:,0], c='r',label='j0')
-            print('x_len_trans\n',x_len_trans)
-            print('res_j0[3]\n',res_j0[3])
             ax12.plot(res_j1[2],via_j1,'*',res_j1[3],trans[:,1], label='j1')
             ax22.plot(res_j2[2],via_j2,'*',res_j2[3],trans[:,2], label='j2')
             ax32.plot(res_j3[2],via_j3,'*',res_j3[3],trans[:,3], label='j3')

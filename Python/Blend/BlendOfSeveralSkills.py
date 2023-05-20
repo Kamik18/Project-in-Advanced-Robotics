@@ -14,6 +14,7 @@ import Python.Gripper.RobotiqGripper as RobotiqGripper
 import Python.GMM.GMM as GMM
 import threading
 import Python.DMP.DMP_Global as DMP
+import copy
 
 
 RUNNING: bool = True
@@ -226,13 +227,15 @@ def blendPath(plot: bool = False):
     adddotsjoints(return_to_start.q,(0,0,0))
     env.hold()
     """
-    stored_up = down_a_j
-    stored_down = up_b_j
+    stored_up_b = copy.deepcopy(up_b_j)
+    stored_down_b = copy.deepcopy(down_b_j)
+    stored_up_a = copy.deepcopy(up_a_j)
+    stored_down_a = copy.deepcopy(down_a_j)
     
     try:
         print(type(cov_up_b))
         def reduce_dist(prev_point: np.ndarray, curr_point: np.ndarray, cov: np.ndarray) -> np.ndarray:
-            cov *= 1.95
+            cov *= 1.96
             for i in range(len(prev_point)):
                 if (prev_point[i] - curr_point[i]) > cov[i]:
                     curr_point[i] += cov[i]
@@ -255,7 +258,7 @@ def blendPath(plot: bool = False):
         # Flip up_b_j and the covariance
         up_b_j = np.flip(up_b_j, axis=0)
         cov_up_b = np.flip(cov_up_b, axis=0)
-        """
+        
         # Optimize down_b_j
         # Flip down_b_j and the covariance
         down_b_j = np.flip(down_b_j, axis=0)
@@ -267,7 +270,7 @@ def blendPath(plot: bool = False):
         # Flip down_b_j and the covariance
         down_b_j = np.flip(down_b_j, axis=0)
         cov_down_b = np.flip(cov_down_b, axis=0)
-        """
+        
         # Optimize up_a_j
         # Flip up_a_j and the covariance
         up_a_j = np.flip(up_a_j, axis=0)
@@ -279,7 +282,7 @@ def blendPath(plot: bool = False):
         # Flip up_a_j and the covariance
         up_a_j = np.flip(up_a_j, axis=0)
         cov_up_a = np.flip(cov_up_a, axis=0)
-        """
+        
         # Optimize down_a_j
         # Flip down_a_j and the covariance
         down_a_j = np.flip(down_a_j, axis=0)
@@ -291,11 +294,11 @@ def blendPath(plot: bool = False):
         # Flip down_a_j and the covariance
         down_a_j = np.flip(down_a_j, axis=0)
         cov_down_a = np.flip(cov_down_a, axis=0)
-        """
+        
     except Exception as e:
         print(e)
 
-    printGMMcov(stored_up, down_a_j, np.concatenate([stored_up, stored_down]), np.concatenate([down_a_j, up_b_j]))
+    #printGMMcov(stored_up_b, up_b_j, np.concatenate([stored_up_b, stored_down_b]), np.concatenate([up_b_j, down_b_j]))
     
     
     # Merge the paths
