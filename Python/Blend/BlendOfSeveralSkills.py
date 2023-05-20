@@ -117,8 +117,8 @@ def adddotsjoints(traj, colorref):
         q = UR5.fkine(joint_pos)
         mark = Sphere(0.01, pose=q, color=colorref)
         env.add(mark)
-        UR5.q = joint_pos
-        env.step(0.1)
+        #UR5.q = joint_pos
+        #env.step(0.1)
 
 def getData(method: str = "") -> tuple:
     """Get the data from the records
@@ -164,7 +164,41 @@ def blendPath(plot: bool = False):
     up_b_j_dmp, down_b_j_dmp, up_a_j_dmp, down_a_j_dmp = getData("DMP")
     up_b_j, down_b_j, up_a_j, down_a_j, cov_up_b, cov_down_b, cov_up_a, cov_down_a = getData("GMM")
     #up_b_j, down_b_j, up_a_j, down_a_j = getData()       
-    
+    """
+    home_to_start = blendClass.makeTraj(q0, up_b_j[0])
+    B_A = blendClass.makeTraj(down_b_j[-1], up_a_j[0])
+    A_B = blendClass.makeTraj(down_a_j[-1], up_b_j[0])
+    return_to_start = blendClass.makeTraj(down_b_j[-1], q0)
+    adddotsjoints(home_to_start.q,(1,0,0))
+    adddotsjoints(up_b_j,(0,1,0))
+    adddotsjoints(down_b_j,(0,0,1))
+    adddotsjoints(B_A.q,(1,1,0))
+    adddotsjoints(up_a_j,(1,0,1))
+    adddotsjoints(down_a_j,(0,1,1))
+    adddotsjoints(A_B.q,(1,1,1))
+    adddotsjoints(up_b_j,(0,1,0))
+    adddotsjoints(return_to_start.q,(0,0,0))
+    env.hold()
+    """
+    desired_traj = up_a_j
+    x_len = np.linspace(0, 2, len(desired_traj))
+    fig2, (ax0, ax1, ax2, ax3, ax4, ax5) = plt.subplots(nrows=6, ncols=1,figsize=(6,8))
+    ax0.scatter(x_len,desired_traj[:,0], label='j0_bf', marker='.')
+    ax1.scatter(x_len,desired_traj[:,1], label='j1_bf', marker='.')
+    ax2.scatter(x_len,desired_traj[:,2], label='j2_bf', marker='.')
+    ax3.scatter(x_len,desired_traj[:,3], label='j3_bf', marker='.')
+    ax4.scatter(x_len,desired_traj[:,4], label='j4_bf', marker='.')
+    ax5.scatter(x_len,desired_traj[:,5], label='j5_bf', marker='.')
+    ax0.legend(); ax1.legend(); ax2.legend(); ax3.legend(); ax4.legend(); ax5.legend()
+    fig1, (ax0_c, ax1_c, ax2_c, ax3_c, ax4_c, ax5_c) = plt.subplots(nrows=6, ncols=1,figsize=(6,8))
+    ax0_c.scatter(x_len,cov_up_a[:,0], label='j0_cov', marker='.')
+    ax1_c.scatter(x_len,cov_up_a[:,1], label='j1_cov', marker='.')
+    ax2_c.scatter(x_len,cov_up_a[:,2], label='j2_cov', marker='.')
+    ax3_c.scatter(x_len,cov_up_a[:,3], label='j3_cov', marker='.')
+    ax4_c.scatter(x_len,cov_up_a[:,4], label='j4_cov', marker='.')
+    ax5_c.scatter(x_len,cov_up_a[:,5], label='j5_cov', marker='.')
+    ax0_c.legend(); ax1_c.legend(); ax2_c.legend(); ax3_c.legend(); ax4_c.legend(); ax5_c.legend()
+
     try:
         print(type(cov_up_b))
         def reduce_dist(prev_point: np.ndarray, curr_point: np.ndarray, cov: np.ndarray) -> np.ndarray:
@@ -231,28 +265,40 @@ def blendPath(plot: bool = False):
         print(e)
 
     
+    ax0.scatter(x_len,desired_traj[:,0], label='j0_af',marker='.')
+    ax1.scatter(x_len,desired_traj[:,1], label='j1_af',marker='.')
+    ax2.scatter(x_len,desired_traj[:,2], label='j2_af',marker='.')
+    ax3.scatter(x_len,desired_traj[:,3], label='j3_af',marker='.')
+    ax4.scatter(x_len,desired_traj[:,4], label='j4_af',marker='.')
+    ax5.scatter(x_len,desired_traj[:,5], label='j5_af',marker='.')
+    ax0.legend(); ax1.legend(); ax2.legend(); ax3.legend(); ax4.legend(); ax5.legend()
+    plt.show()
+    exit(1)
     # Merge the paths
     #up_b_j = up_b_j_dmp
     #down_b_j = down_b_j_dmp
     #up_a_j = up_a_j_dmp
     #down_a_j = down_a_j_dmp
 
-    up_b_j, down_b_j, up_a_j, down_a_j= getData()
+    #up_b_j, down_b_j, up_a_j, down_a_j= getData()
     # Connection paths
     home_to_start = blendClass.makeTraj(q0, up_b_j[0])
     return_to_start = blendClass.makeTraj(down_b_j[-1], q0)
 
-    move_to_pickup = blendClass.blendJointTraj(home_to_start.q, up_b_j, 5, plot=False)
+    move_to_pickup = blendClass.blend_with_viapoints(home_to_start.q, up_b_j,  
+                                                np.array([home_to_start.q[-20], up_b_j[0], up_b_j[20]]),
+                                                5, plot=True)
     
     blendedPath2 = blendClass.blend_with_viapoints(down_b_j, up_a_j, 
                                             np.array([down_b_j[-20], down_b_j[-1], up_a_j[0], up_a_j[20]]),
                                             5, plot=True)
     
-    exit(1)
     blendedPath3 = blendClass.blend_with_viapoints(down_a_j, up_b_j, 
                                             np.array([down_a_j[-20], down_a_j[-1], up_b_j[0],up_b_j[20]]), 
-                                            5, plot=False)
-    return_to_home = blendClass.blendJointTraj(down_b_j, return_to_start.q, 5, plot=False)
+                                            5, plot=True)
+    return_to_home = blendClass.blend_with_viapoints(down_b_j, return_to_start.q, 
+                                                     np.array([down_b_j[-20], return_to_start.q[0], return_to_start.q[20]]),
+                                                     5, plot=True)
 
     def remove_near_points(points:np.ndarray, start:int = 10, end:int = 10) -> np.ndarray:
         if len(points) < (start + end):
@@ -287,8 +333,8 @@ def blendPath(plot: bool = False):
     if plot:
         adddotsjoints(move_to_pickup,(1,0,0))
         adddotsjoints(move_insert_return,(0,1,0))
-        adddotsjoints(return_to_home,(1,0,0))
-    
+        adddotsjoints(return_to_home,(0,0,1))
+        env.hold()
     return move_to_pickup, move_insert_return, return_to_home
 
 def oriPath(plot : bool = False):
@@ -403,7 +449,7 @@ if swiftEnv:
     env = swift.Swift()
     env.launch(realtime=True)
     # Create an obstacles
-    env.add(box)
+    #env.add(box)
     # Add robot to env
     env.add(UR5)
     # Move the robot to the start position
