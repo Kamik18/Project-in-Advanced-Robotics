@@ -50,8 +50,8 @@ class DMP_SPC:
             skill_name = 'DOWN_A'
           
         if index == 1:
-            self.TRAINING_TIME = 5.0
-            self.DMP_TIME = 5.0
+            self.TRAINING_TIME = 3.0
+            self.DMP_TIME = 3.0
             self.FileName = 'Records/DOWN_B/20/'
             skill_name = 'DOWN_B'        
 

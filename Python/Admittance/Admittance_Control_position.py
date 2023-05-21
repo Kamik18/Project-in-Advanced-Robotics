@@ -10,10 +10,10 @@ class AdmittanceControl():
         """Admittance control of the robot
 
         Args:
-            KP (float, optional): Kp is the proportional gain of the admittance control. Defaults to 10. 
-            KD (float, optional): Kd is the derivative gain of the admittance control.. Defaults to 20. 
-            tr (float, optional): Tr is the time it takes for the system to reach 63% of its final value. Defaults to 0.1.
-            sample_time (float, optional): Sample time in seconds. Defaults to 0.001.
+            - KP (float, optional): Kp is the proportional gain of the admittance control. Defaults to 10. 
+            - KD (float, optional): Kd is the derivative gain of the admittance control.. Defaults to 20. 
+            - tr (float, optional): Tr is the time it takes for the system to reach 63% of its final value. Defaults to 0.1.
+            - sample_time (float, optional): Sample time in seconds. Defaults to 0.001.
         """
         # Set the gains
         self.kp: np.ndarray = np.diag([Kp, Kp, Kp])
