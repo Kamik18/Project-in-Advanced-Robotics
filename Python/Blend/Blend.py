@@ -537,7 +537,7 @@ class Blend():
         """        
 
         # Convert to TCP
-        plot_tcp = True
+        plot_tcp = False
         if plot_tcp:
             for i in range(len(points)):
                 tcp = self.UR5.fkine(points[i])
@@ -614,7 +614,7 @@ class Blend():
             x_len_traj2 = np.arange(10, 15, 5/len(traj2))#np.linspace(0, 15, len(traj2))
             x_len = np.arange(0, 15, 15/len(temp)) #np.linspace(0, 15, len(temp))
             print(len(temp))
-            #ax02.plot(x_points,via_j0,'*',x_len,temp[:,0], c='g', label='j0')
+            ax02.plot(x_points,via_j0,'*',x_len,temp[:,0], c='g', label='j0')
             #ax02.plot(x_len_traj1,traj1[:,0], x_len_traj2, traj2[:,0], c='c', label='x_ori')
             #ax02.plot(res_j0[2],via_j0,'*',res_j0[3],trans[:,0], c='b', label='j0')
             ax02.plot(res_j0[3],trans[:,0], c='r',label='j0')

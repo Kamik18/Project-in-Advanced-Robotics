@@ -10,7 +10,6 @@ from rtde_control import RTDEControlInterface as RTDEControl
 from rtde_receive import RTDEReceiveInterface as RTDEReceive
 import time
 import Python.Gripper.RobotiqGripper as RobotiqGripper
-#from Python.Gripper.RobotiqGripper import RobotiqGripper
 import Python.GMM.GMM as GMM
 import threading
 import Python.DMP.DMP_Global as DMP
@@ -133,7 +132,7 @@ def getData(method: str = "") -> tuple:
     if method == "DMP":
         dmp_spec = DMP.DMP_SPC()
         dmp_data,_ = dmp_spec.maindmp()
-        down_a_j, down_b_j,up_a_j, up_b_j = dmp_data['Down_A'], dmp_data['Down_B'], dmp_data['Up_A'], dmp_data['Up_B']
+        down_a_j, down_b_j,up_a_j, up_b_j = dmp_data['Down_A'], dmp_data['Down_B'], dmp_data['UP_A'], dmp_data['UP_B']
         
         #down_a_j, down_b_j,up_a_j, up_b_j = dmp_spec.read_out_file(skip_lines=5)
         #down_b_j = dmp_spec.read_out_new_pos_file(skip_lines=1,DOWN_B=True, UP_B=False, UP_A=False, DOWN_A=False)
@@ -205,12 +204,11 @@ def printGMMcov(stored_traj, desired_traj, comb_traj, comb_traj_opti):
     ax5_o.scatter(x_len_c,comb_traj_opti[:,5], label='j5_af', marker='.')
     ax0_o.legend(); ax1_o.legend(); ax2_o.legend(); ax3_o.legend(); ax4_o.legend(); ax5_o.legend()
     plt.show()
-    
 
 def blendPath(plot: bool = False):
     #up_b_j_dmp, down_b_j_dmp, up_a_j_dmp, down_a_j_dmp = getData("DMP")
     up_b_j, down_b_j, up_a_j, down_a_j, cov_up_b, cov_down_b, cov_up_a, cov_down_a = getData("GMM")
-    #up_b_j, down_b_j, up_a_j, down_a_j = getData()       
+    up_b_j, down_b_j, up_a_j, down_a_j = getData()       
     """
     home_to_start = blendClass.makeTraj(q0, up_b_j[0])
     B_A = blendClass.makeTraj(down_b_j[-1], up_a_j[0])
@@ -300,13 +298,12 @@ def blendPath(plot: bool = False):
 
     #printGMMcov(stored_up_b, up_b_j, np.concatenate([stored_up_b, stored_down_b]), np.concatenate([up_b_j, down_b_j]))
     
-    
     # Merge the paths
-    #up_b_j = up_b_j_dmpWhat 
+    #up_b_j = up_b_j_dmp 
     #down_b_j = down_b_j_dmp
     #up_a_j = up_a_j_dmp
     #down_a_j = down_a_j_dmp
-
+    
     #up_b_j, down_b_j, up_a_j, down_a_j= getData()
     # Connection paths
     home_to_start = blendClass.makeTraj(q0, up_b_j[0])
@@ -314,18 +311,19 @@ def blendPath(plot: bool = False):
 
     move_to_pickup = blendClass.blend_with_viapoints(home_to_start.q, up_b_j,  
                                                 np.array([home_to_start.q[-20], up_b_j[0], up_b_j[20]]),
-                                                5, plot=True)
+                                                5, plot=False)
     
     blendedPath2 = blendClass.blend_with_viapoints(down_b_j, up_a_j, 
                                             np.array([down_b_j[-20], down_b_j[-1], up_a_j[0], up_a_j[20]]),
-                                            5, plot=True)
+                                            5, plot=False)
     
     blendedPath3 = blendClass.blend_with_viapoints(down_a_j, up_b_j, 
                                             np.array([down_a_j[-20], down_a_j[-1], up_b_j[0],up_b_j[20]]), 
-                                            5, plot=True)
+                                            5, plot=False)
+    
     return_to_home = blendClass.blend_with_viapoints(down_b_j, return_to_start.q, 
                                                      np.array([down_b_j[-20], return_to_start.q[0], return_to_start.q[20]]),
-                                                     5, plot=True)
+                                                     5, plot=False)
 
     def remove_near_points(points:np.ndarray, start:int = 10, end:int = 10) -> np.ndarray:
         if len(points) < (start + end):
@@ -393,12 +391,22 @@ def log():
         # Read joint acceleration, velocity
         acc = rtde_r.getTargetQdd()
         vel = rtde_r.getActualQd()
-
+        tcp = rtde_r.getActualTCPPose()
+        pos = rtde_r.getActualQ()
+        tcp_speed = rtde_r.getActualTCPSpeed()
+        folder = "Blend"
         # Append to file
-        with open("./Records/experiments/acc.txt", "a") as f:
+        with open(f"./Records/experiments/{folder}/acc.txt", "a") as f:
             f.write(f"{acc}\n")
-        with open("./Records/experiments/vel.txt", "a") as f:
+        with open(f"./Records/experiments/{folder}/vel.txt", "a") as f:
             f.write(f"{vel}\n")
+        with open(f"./Records/experiments/{folder}/pos.txt", "a") as f:
+            f.write(f"{pos}\n")
+        with open(f"./Records/experiments/{folder}/tcp.txt", "a") as f:
+            f.write(f"{tcp}\n")
+        with open(f"./Records/experiments/{folder}/tcp_speed.txt", "a") as f:
+            f.write(f"{tcp_speed}\n")
+            
         
         # Wait for timestep
         delta_time = time.time() - start_time
@@ -422,10 +430,10 @@ def runRobot(speed,move_to_pickup, move_insert_return, return_to_home):
     rtde_c.speedStop()
     time.sleep(1)
 
-    gripper = RobotiqGripper()
-    gripper.connect(IP, 63352)
-    gripper.activate()
-    gripper.move_and_wait_for_pos(position=0, speed=5, force=25)
+    #gripper = RobotiqGripper()
+    #gripper.connect(IP, 63352)
+    #gripper.activate()
+    #gripper.move_and_wait_for_pos(position=0, speed=5, force=25)
 
     # Thread for force plot
     log_thread = threading.Thread(target=log)
@@ -442,7 +450,7 @@ def runRobot(speed,move_to_pickup, move_insert_return, return_to_home):
         time.sleep(speed)
 
     # Grip the object
-    gripper.move_and_wait_for_pos(position=255, speed=5, force=25)
+    #gripper.move_and_wait_for_pos(position=255, speed=5, force=25)
     time.sleep(1.0)
 
     for joint in move_insert_return:
@@ -450,7 +458,7 @@ def runRobot(speed,move_to_pickup, move_insert_return, return_to_home):
         time.sleep(speed)
         
     # release the object
-    gripper.move_and_wait_for_pos(position=0, speed=5, force=25)
+    #gripper.move_and_wait_for_pos(position=0, speed=5, force=25)
     time.sleep(1.0)
 
     for joint in return_to_home:
@@ -463,6 +471,7 @@ def runRobot(speed,move_to_pickup, move_insert_return, return_to_home):
     print("Stopped movement")
     rtde_c.stopScript()
     rtde_c.disconnect()
+
 
 # Standard environment
 box = Cuboid([1,1,-0.10], base=SE3(0.30,0.34,-0.05), color=[0,0,1])
@@ -486,7 +495,6 @@ if swiftEnv:
 #move_to_pickup, move_insert_return, return_to_home = oriPath(swiftEnv)
 move_to_pickup, move_insert_return, return_to_home = blendPath(swiftEnv)
 
-exit(1)
 speed = 0.1
 if not swiftEnv:
     runRobot(speed, move_to_pickup, move_insert_return, return_to_home)

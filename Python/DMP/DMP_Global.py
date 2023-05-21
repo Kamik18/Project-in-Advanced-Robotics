@@ -50,8 +50,8 @@ class DMP_SPC:
             skill_name = 'Down_A'
           
         if index == 1:
-            self.TRAINING_TIME = 5.0
-            self.DMP_TIME = 5.0
+            self.TRAINING_TIME = 3.0
+            self.DMP_TIME = 3.0
             self.FileName = 'Records/Down_B/20/'
             skill_name = 'Down_B'        
 
@@ -78,7 +78,7 @@ class DMP_SPC:
             - dict_demo['DOWN_A', 'DOWN_B', 'UP_A', 'UP_B']: DMP joint angles
         """
 
-        N = 100
+        N = 10
         cs_alpha = -np.log(0.0001)
         alpha=48
         beta=12
@@ -86,20 +86,20 @@ class DMP_SPC:
         dict_out:dict = {
         "Down_A": np.array(0),
         "Down_B": np.array(0),
-        "Up_A": np.array(0),
-        "Up_B": np.array(0),
+        "UP_A": np.array(0),
+        "UP_B": np.array(0),
         }
         dict_demo:dict = {
         "Down_A": np.array(0),
         "Down_B": np.array(0),
-        "Up_A": np.array(0),
-        "Up_B": np.array(0),
+        "UP_A": np.array(0),
+        "UP_B": np.array(0),
         }
 
         for i in range(4):
 
             skill_name = self.set_specfication(i)
-            _,demo_joint = self.read_demo_files(self.FileName, skip_lines=15)
+            _,demo_joint = self.read_demo_files(self.FileName, skip_lines=50)
             tau = self.TRAINING_TIME
             t_train = np.arange(0, tau, self.TRAINING_TIME/ len(demo_joint))
 
