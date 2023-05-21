@@ -14,6 +14,7 @@ import Python.Gripper.RobotiqGripper as RobotiqGripper
 import Python.GMM.GMM as GMM
 import threading
 import Python.DMP.DMP_Global as DMP
+import copy
 
 
 RUNNING: bool = True
@@ -117,8 +118,8 @@ def adddotsjoints(traj, colorref):
         q = UR5.fkine(joint_pos)
         mark = Sphere(0.01, pose=q, color=colorref)
         env.add(mark)
-        UR5.q = joint_pos
-        env.step(0.1)
+        #UR5.q = joint_pos
+        #env.step(0.1)
 
 def getData(method: str = "") -> tuple:
     """Get the data from the records
@@ -132,7 +133,7 @@ def getData(method: str = "") -> tuple:
     if method == "DMP":
         dmp_spec = DMP.DMP_SPC()
         dmp_data,_ = dmp_spec.maindmp()
-        down_a_j, down_b_j,up_a_j, up_b_j = dmp_data['DOWN_A'], dmp_data['DOWN_B'], dmp_data['UP_A'], dmp_data['UP_B']
+        down_a_j, down_b_j,up_a_j, up_b_j = dmp_data['Down_A'], dmp_data['Down_B'], dmp_data['Up_A'], dmp_data['Up_B']
         
         #down_a_j, down_b_j,up_a_j, up_b_j = dmp_spec.read_out_file(skip_lines=5)
         #down_b_j = dmp_spec.read_out_new_pos_file(skip_lines=1,DOWN_B=True, UP_B=False, UP_A=False, DOWN_A=False)
@@ -163,15 +164,78 @@ def getData(method: str = "") -> tuple:
         down_a_j: np.ndarray = np.loadtxt("./Records/Down_A/1/record_j.txt", delimiter=',', skiprows=0)[::50]
     return up_b_j, down_b_j, up_a_j, down_a_j
 
+def printGMMcov(stored_traj, desired_traj, comb_traj, comb_traj_opti):
+    #fig2, (ax0, ax1, ax2, ax3, ax4, ax5) = plt.subplots(nrows=6, ncols=2,figsize=(6,8))
+    #fig2, ((ax0, ax0_c), (ax1, ax1_c), (ax2, ax2_c), (ax3, ax3_c), (ax4, ax4_c), (ax5, ax5_c)) = plt.subplots(nrows=6, ncols=2,figsize=(12,8))
+    x_len = np.linspace(0, 2, len(desired_traj))
+    x_len_c = np.linspace(0, 4, len(comb_traj))
+    fig2, ((ax0, ax0_c, ax0_o), (ax1, ax1_c, ax1_o), (ax2, ax2_c, ax2_o), (ax3, ax3_c, ax3_o), (ax4, ax4_c, ax4_o), (ax5, ax5_c, ax5_o)) = plt.subplots(nrows=6, ncols=3,figsize=(15,8))
+    ax0.set_title('Covariance optimization')
+    ax0_c.set_title('Gap between two trajectories')
+    ax0_o.set_title('Optimized gap between two trajectories')
+    ax0.scatter(x_len,desired_traj[:,0], label='j0_bf', marker='.')
+    ax1.scatter(x_len,desired_traj[:,1], label='j1_bf', marker='.')
+    ax2.scatter(x_len,desired_traj[:,2], label='j2_bf', marker='.')
+    ax3.scatter(x_len,desired_traj[:,3], label='j3_bf', marker='.')
+    ax4.scatter(x_len,desired_traj[:,4], label='j4_bf', marker='.')
+    ax5.scatter(x_len,desired_traj[:,5], label='j5_bf', marker='.')
+
+    ax0.scatter(x_len,stored_traj[:,0], label='j0_af', marker='.')
+    ax1.scatter(x_len,stored_traj[:,1], label='j1_af', marker='.')
+    ax2.scatter(x_len,stored_traj[:,2], label='j2_af', marker='.')
+    ax3.scatter(x_len,stored_traj[:,3], label='j3_af', marker='.')
+    ax4.scatter(x_len,stored_traj[:,4], label='j4_af', marker='.')
+    ax5.scatter(x_len,stored_traj[:,5], label='j5_af', marker='.')
+    ax0.legend(); ax1.legend(); ax2.legend(); ax3.legend(); ax4.legend(); ax5.legend()
+    
+    x_len_c = np.linspace(0, 4, len(comb_traj))
+    ax0_c.scatter(x_len_c,comb_traj[:,0], label='j0_bf', marker='.')
+    ax1_c.scatter(x_len_c,comb_traj[:,1], label='j1_bf', marker='.')
+    ax2_c.scatter(x_len_c,comb_traj[:,2], label='j2_bf', marker='.')
+    ax3_c.scatter(x_len_c,comb_traj[:,3], label='j3_bf', marker='.')
+    ax4_c.scatter(x_len_c,comb_traj[:,4], label='j4_bf', marker='.')
+    ax5_c.scatter(x_len_c,comb_traj[:,5], label='j5_bf', marker='.')
+    ax0_c.legend(); ax1_c.legend(); ax2_c.legend(); ax3_c.legend(); ax4_c.legend(); ax5_c.legend()
+
+    ax0_o.scatter(x_len_c,comb_traj_opti[:,0], label='j0_af', marker='.')
+    ax1_o.scatter(x_len_c,comb_traj_opti[:,1], label='j1_af', marker='.')
+    ax2_o.scatter(x_len_c,comb_traj_opti[:,2], label='j2_af', marker='.')
+    ax3_o.scatter(x_len_c,comb_traj_opti[:,3], label='j3_af', marker='.')
+    ax4_o.scatter(x_len_c,comb_traj_opti[:,4], label='j4_af', marker='.')
+    ax5_o.scatter(x_len_c,comb_traj_opti[:,5], label='j5_af', marker='.')
+    ax0_o.legend(); ax1_o.legend(); ax2_o.legend(); ax3_o.legend(); ax4_o.legend(); ax5_o.legend()
+    plt.show()
+    
+
 def blendPath(plot: bool = False):
-    up_b_j_dmp, down_b_j_dmp, up_a_j_dmp, down_a_j_dmp = getData("DMP")
+    #up_b_j_dmp, down_b_j_dmp, up_a_j_dmp, down_a_j_dmp = getData("DMP")
     up_b_j, down_b_j, up_a_j, down_a_j, cov_up_b, cov_down_b, cov_up_a, cov_down_a = getData("GMM")
     #up_b_j, down_b_j, up_a_j, down_a_j = getData()       
+    """
+    home_to_start = blendClass.makeTraj(q0, up_b_j[0])
+    B_A = blendClass.makeTraj(down_b_j[-1], up_a_j[0])
+    A_B = blendClass.makeTraj(down_a_j[-1], up_b_j[0])
+    return_to_start = blendClass.makeTraj(down_b_j[-1], q0)
+    adddotsjoints(home_to_start.q,(1,0,0))
+    adddotsjoints(up_b_j,(0,1,0))
+    adddotsjoints(down_b_j,(0,0,1))
+    adddotsjoints(B_A.q,(1,1,0))
+    adddotsjoints(up_a_j,(1,0,1))
+    adddotsjoints(down_a_j,(0,1,1))
+    adddotsjoints(A_B.q,(1,1,1))
+    adddotsjoints(up_b_j,(0,1,0))
+    adddotsjoints(return_to_start.q,(0,0,0))
+    env.hold()
+    """
+    stored_up_b = copy.deepcopy(up_b_j)
+    stored_down_b = copy.deepcopy(down_b_j)
+    stored_up_a = copy.deepcopy(up_a_j)
+    stored_down_a = copy.deepcopy(down_a_j)
     
     try:
         print(type(cov_up_b))
         def reduce_dist(prev_point: np.ndarray, curr_point: np.ndarray, cov: np.ndarray) -> np.ndarray:
-            cov *= 1.95
+            cov *= 1.96
             for i in range(len(prev_point)):
                 if (prev_point[i] - curr_point[i]) > cov[i]:
                     curr_point[i] += cov[i]
@@ -194,7 +258,7 @@ def blendPath(plot: bool = False):
         # Flip up_b_j and the covariance
         up_b_j = np.flip(up_b_j, axis=0)
         cov_up_b = np.flip(cov_up_b, axis=0)
-
+        
         # Optimize down_b_j
         # Flip down_b_j and the covariance
         down_b_j = np.flip(down_b_j, axis=0)
@@ -206,7 +270,7 @@ def blendPath(plot: bool = False):
         # Flip down_b_j and the covariance
         down_b_j = np.flip(down_b_j, axis=0)
         cov_down_b = np.flip(cov_down_b, axis=0)
-
+        
         # Optimize up_a_j
         # Flip up_a_j and the covariance
         up_a_j = np.flip(up_a_j, axis=0)
@@ -218,7 +282,7 @@ def blendPath(plot: bool = False):
         # Flip up_a_j and the covariance
         up_a_j = np.flip(up_a_j, axis=0)
         cov_up_a = np.flip(cov_up_a, axis=0)
-
+        
         # Optimize down_a_j
         # Flip down_a_j and the covariance
         down_a_j = np.flip(down_a_j, axis=0)
@@ -230,32 +294,38 @@ def blendPath(plot: bool = False):
         # Flip down_a_j and the covariance
         down_a_j = np.flip(down_a_j, axis=0)
         cov_down_a = np.flip(cov_down_a, axis=0)
+        
     except Exception as e:
         print(e)
 
+    #printGMMcov(stored_up_b, up_b_j, np.concatenate([stored_up_b, stored_down_b]), np.concatenate([up_b_j, down_b_j]))
+    
     
     # Merge the paths
-    #up_b_j = up_b_j_dmp
+    #up_b_j = up_b_j_dmpWhat 
     #down_b_j = down_b_j_dmp
     #up_a_j = up_a_j_dmp
     #down_a_j = down_a_j_dmp
 
-    up_b_j, down_b_j, up_a_j, down_a_j= getData()
+    #up_b_j, down_b_j, up_a_j, down_a_j= getData()
     # Connection paths
     home_to_start = blendClass.makeTraj(q0, up_b_j[0])
     return_to_start = blendClass.makeTraj(down_b_j[-1], q0)
 
-    move_to_pickup = blendClass.blendJointTraj(home_to_start.q, up_b_j, 5, plot=False)
+    move_to_pickup = blendClass.blend_with_viapoints(home_to_start.q, up_b_j,  
+                                                np.array([home_to_start.q[-20], up_b_j[0], up_b_j[20]]),
+                                                5, plot=True)
     
     blendedPath2 = blendClass.blend_with_viapoints(down_b_j, up_a_j, 
                                             np.array([down_b_j[-20], down_b_j[-1], up_a_j[0], up_a_j[20]]),
                                             5, plot=True)
     
-    exit(1)
     blendedPath3 = blendClass.blend_with_viapoints(down_a_j, up_b_j, 
                                             np.array([down_a_j[-20], down_a_j[-1], up_b_j[0],up_b_j[20]]), 
-                                            5, plot=False)
-    return_to_home = blendClass.blendJointTraj(down_b_j, return_to_start.q, 5, plot=False)
+                                            5, plot=True)
+    return_to_home = blendClass.blend_with_viapoints(down_b_j, return_to_start.q, 
+                                                     np.array([down_b_j[-20], return_to_start.q[0], return_to_start.q[20]]),
+                                                     5, plot=True)
 
     def remove_near_points(points:np.ndarray, start:int = 10, end:int = 10) -> np.ndarray:
         if len(points) < (start + end):
@@ -290,8 +360,8 @@ def blendPath(plot: bool = False):
     if plot:
         adddotsjoints(move_to_pickup,(1,0,0))
         adddotsjoints(move_insert_return,(0,1,0))
-        adddotsjoints(return_to_home,(1,0,0))
-    
+        adddotsjoints(return_to_home,(0,0,1))
+        env.hold()
     return move_to_pickup, move_insert_return, return_to_home
 
 def oriPath(plot : bool = False):
@@ -406,7 +476,7 @@ if swiftEnv:
     env = swift.Swift()
     env.launch(realtime=True)
     # Create an obstacles
-    env.add(box)
+    #env.add(box)
     # Add robot to env
     env.add(UR5)
     # Move the robot to the start position
