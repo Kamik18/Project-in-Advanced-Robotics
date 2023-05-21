@@ -55,6 +55,7 @@ def read_exp_dat(file):
 TIME:int = 0.02
 # Read data from file
 data_dmp= read_exp_dat('Records\experiments\GMM_B_DMP_A/acc.txt')
+data_dmp =  data_dmp[-1845:]
 data_gmm = read_exp_dat('Records\experiments/DMP_B_GMM_A/acc.txt')
 num_points = data_dmp.shape[0]
 time = np.arange(num_points) * 0.02
@@ -63,9 +64,9 @@ time = np.arange(num_points) * 0.02
 fig, axs = plt.subplots(6, 1,figsize=(6.4, 8.6))
 # plot data
 for i in range(6):
-    axs[i].plot(time, data_dmp[:, i], label='No-blend', color='red' , linewidth=1)
+    axs[i].plot(time, data_dmp[:, i], label='GMM_B_DMP_A', color='red' , linewidth=1)
     if data_gmm.shape[0] > 0:
-         axs[i].plot(time[:data_gmm.shape[0]], data_gmm[:, i], label='blend', color='blue', linewidth=1)
+         axs[i].plot(time[:data_gmm.shape[0]], data_gmm[:, i], label='DMP_B_GMM_A', color='blue', linewidth=1)
     axs[i].set_ylabel(f'$q_{i+1} [rad/s^2]$')
     
     # Hide the x-axis tick labels for the first five subplots
@@ -74,7 +75,7 @@ for i in range(6):
 
 # Set the x-axis label and legend for the last subplot
 axs[5].set_xlabel('Time $[s]$')
-axs[1].legend(loc='upper right')
+axs[5].legend(loc='lower right')
 
 
 
@@ -89,7 +90,7 @@ for i in range(6):
         spine.set_edgecolor('black')
 
 fig.align_ylabels()
-#plt.savefig('Records\experiments\Fig/blend.pdf', bbox_inches='tight')
+plt.savefig('Records\experiments\Fig/DMP_GMM_MERGE.pdf', bbox_inches='tight')
 plt.show()
 
 
