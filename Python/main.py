@@ -272,13 +272,9 @@ def wrench_transformation(tcp, tau, f) -> tuple:
 
 
 if __name__ == "__main__":
-
-    
-
     # Thread for force plot
     Force_thread = threading.Thread(target=update_plot)
     #Force_thread.start()
-    
     
     # Create control and receive interface for the robot
     try:
@@ -332,16 +328,15 @@ if __name__ == "__main__":
         "tcp": [],
         "forces": [],
         "velocity": [],
-        "joint": []
+        "joint": [],
+        "forces_filter": [],
+        "forces_raw": [],
     }
     
     #joint_init =  [-1.5207427183734339, -1.7672444782652796, 2.0703089872943323, -1.8949862919249476, -1.6235335508929651, 0.47969508171081543]
     #tcp_init = [-0.11393864957703922, 0.4495333526836168, -0.07185608921857356, 1.5553759729297227, -0.45710594525512366, -0.14085995620748915]
-    import winsound
     numere  = 0
-    frequency = 440  # Set Frequency To 2500 Hertz
-    duration = 1000  # Set Duration To 1000 ms == 1 second
-    winsound.Beep(frequency, duration)
+    
     # Main loo
     for i_run in range(1):  
         
@@ -375,7 +370,7 @@ if __name__ == "__main__":
             os.remove(filename_record_j)
 
 
-        for i in range(50 * int(1/TIME)):
+        for i in range(10 * int(1/TIME)):
             
             # Detect if robot is operational
             if(rtde_r.getRobotStatus() != 3):
@@ -404,18 +399,16 @@ if __name__ == "__main__":
             _, w, dw = admittance_control_quarternion.Rotation_Quaternion(wrench=torque_force, q_ref=[1, 0, 0, 0])
 
             # Set the translational velocity of the robot
-            rtde_c.speedL([dp[0], dp[1], dp[2], w[0], w[1], w[2]], ACCELERATION, TIME)
-            
-
-            
+            rtde_c.speedL([dp[0], dp[1], dp[2], w[0], w[1], w[2]], ACCELERATION, TIME)           
            
             # Save the data            
             # file_data["tcp"].append(tcp)
             # file_data["forces"].append(np.append(newton_force, torque_force))
+            file_data["forces_filter"].append(np.append(newton_force, torque_force))
+            file_data["forces_raw"].append(force_tcp)
             # file_data["velocity"].append([dp[0][0], dp[1][0], dp[2][0], w[0], w[1], w[2]])
             # file_data["joint"].append(joint)
             
-
             # Wait for next timestep            
             rtde_c.waitPeriod(t_start)
             
@@ -439,13 +432,17 @@ if __name__ == "__main__":
         #     for tcp in file_data["joint"]:
         #         f.write(','.join(map(str, tcp)) + '\n')
 
+        with open('Records/forces_filter.txt', 'w') as f:
+            for tcp in file_data["forces_filter"]:
+                f.write(','.join(map(str, tcp)) + '\n')
+
+        with open('Records/forces_raw.txt', 'w') as f:
+            for tcp in file_data["forces_raw"]:
+                f.write(','.join(map(str, tcp)) + '\n')
+
         # # clear file_data
         file_data['tcp'].clear()
         file_data['joint'].clear()
         file_data['velocity'].clear()
         file_data['forces'].clear()
         os.system(f"play -nq -t alsa synth {0.5} sine {440}") 
-
-
-
-
