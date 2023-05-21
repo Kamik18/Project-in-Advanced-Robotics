@@ -15,7 +15,7 @@ def read_exp_dat(file):
     data = np.array([np.fromstring(line[1:-1], sep=', ') for line in lines])
     return data
 
-folder1 = "Blend"
+folder1 = "moveJ"
 folder2 = "No_blend"
 data= read_exp_dat(f'Records/experiments/{folder1}/tcp_speed.txt')
 data_blend= read_exp_dat(f'Records/experiments/{folder2}/tcp_speed.txt')
@@ -28,9 +28,9 @@ time = np.arange(num_points) * 0.02
 fig, axs = plt.subplots(6, 1,figsize=(6.4, 8.6))
 # plot data
 for i in range(6):
-    axs[i].plot(time, data_blend[:, i], label='GMM', color='red' , linewidth=1)
+    axs[i].plot(time, data_blend[:, i], label=folder2, color='red' , linewidth=1)
     if data.shape[0] > 0:
-         axs[i].plot(time[:data.shape[0]], data[:, i], label='DMP', color='blue', linewidth=1)
+         axs[i].plot(time[:data.shape[0]], data[:, i], label=folder1, color='blue', linewidth=1)
 
     axs[i].set_ylabel(f'$q_{i+1} [rad/s^2]$')
     

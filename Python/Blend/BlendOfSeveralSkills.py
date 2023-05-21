@@ -311,7 +311,7 @@ def blendPath(plot: bool = False):
 
     move_to_pickup = blendClass.blend_with_viapoints(home_to_start.q, up_b_j,  
                                                 np.array([home_to_start.q[-20], up_b_j[0], up_b_j[20]]),
-                                                5, plot=False)
+                                                5, plot=True)
     
     blendedPath2 = blendClass.blend_with_viapoints(down_b_j, up_a_j, 
                                             np.array([down_b_j[-20], down_b_j[-1], up_a_j[0], up_a_j[20]]),
@@ -363,7 +363,7 @@ def blendPath(plot: bool = False):
     return move_to_pickup, move_insert_return, return_to_home
 
 def oriPath(plot : bool = False):
-    up_b_j, down_b_j, up_a_j, down_a_j, _, _, _, _ = getData("GMM")
+    up_b_j, down_b_j, up_a_j, down_a_j = getData()
     home_to_start = blendClass.makeTraj(q0, up_b_j[0])
     return_to_start = blendClass.makeTraj(down_b_j[-1], q0)
     connection_b_a = blendClass.makeTraj(down_b_j[-1], up_a_j[0])
@@ -383,7 +383,19 @@ def oriPath(plot : bool = False):
 def log():
     global RUNNING
 
+    folder = "moveJ"
+
     rtde_r = RTDEReceive(IP)
+    with open(f"./Records/experiments/{folder}/acc.txt", "w") as f:
+        f.write(f" ")
+    with open(f"./Records/experiments/{folder}/vel.txt", "w") as f:
+        f.write(f" ")
+    with open(f"./Records/experiments/{folder}/pos.txt", "w") as f:
+        f.write(f" ")
+    with open(f"./Records/experiments/{folder}/tcp.txt", "w") as f:
+        f.write(f" ")
+    with open(f"./Records/experiments/{folder}/tcp_speed.txt", "w") as f:
+        f.write(f" ")
 
     while RUNNING:
         start_time = time.time()
@@ -394,7 +406,6 @@ def log():
         tcp = rtde_r.getActualTCPPose()
         pos = rtde_r.getActualQ()
         tcp_speed = rtde_r.getActualTCPSpeed()
-        folder = "Blend"
         # Append to file
         with open(f"./Records/experiments/{folder}/acc.txt", "a") as f:
             f.write(f"{acc}\n")
@@ -493,9 +504,93 @@ if swiftEnv:
 
 
 #move_to_pickup, move_insert_return, return_to_home = oriPath(swiftEnv)
-move_to_pickup, move_insert_return, return_to_home = blendPath(swiftEnv)
+#move_to_pickup, move_insert_return, return_to_home = blendPath(swiftEnv)
 
+#exit(1)
 speed = 0.1
-if not swiftEnv:
-    runRobot(speed, move_to_pickup, move_insert_return, return_to_home)
+#if not swiftEnv:
+    #runRobot(speed, move_to_pickup, move_insert_return, return_to_home)
 
+RUNNING = True
+
+#run robot
+rtde_c = RTDEControl(IP)
+print("Starting RTDE test script...")
+VELOCITY = 1.5
+ACCELERATION = 0.265
+BLEND = 0
+
+rtde_c.moveJ(q0, VELOCITY, ACCELERATION, False)
+rtde_c.speedStop()
+time.sleep(1)
+
+# Thread for force plot
+log_thread = threading.Thread(target=log)
+log_thread.start()
+rtde_r = RTDEReceive(IP)
+# Move asynchronously in joint space to new_q, we specify asynchronous behavior by setting the async parameter to
+# 'True'. Try to set the async parameter to 'False' to observe a default synchronous movement, which cannot be stopped
+# by the stopJ function due to the blocking behaviour.
+
+up_b_j, down_b_j, up_a_j, down_a_j = getData()
+# up_b
+rtde_c.moveJ(up_b_j[0], VELOCITY, ACCELERATION, True)
+while np.sum(np.abs(rtde_r.getActualQ() - up_b_j[0])) > 0.0001:
+    time.sleep(0.01)
+
+rtde_c.moveJ(up_b_j[-1], VELOCITY, ACCELERATION, True)
+while np.sum(np.abs(rtde_r.getActualQ() - up_b_j[-1])) > 0.0001:
+    time.sleep(0.01)    
+
+rtde_c.moveJ(down_b_j[0], VELOCITY, ACCELERATION, True)
+while np.sum(np.abs(rtde_r.getActualQ() - down_b_j[0])) > 0.0001:
+    time.sleep(0.01)
+
+rtde_c.moveJ(down_b_j[-1], VELOCITY, ACCELERATION, True)
+while np.sum(np.abs(rtde_r.getActualQ() - down_b_j[-1])) > 0.0001:
+    time.sleep(0.01)
+
+# up_a
+rtde_c.moveJ(up_a_j[0], VELOCITY, ACCELERATION, True)
+while np.sum(np.abs(rtde_r.getActualQ() - up_a_j[0])) > 0.0001:
+    time.sleep(0.01)
+
+rtde_c.moveJ(up_a_j[-1], VELOCITY, ACCELERATION, True)
+while np.sum(np.abs(rtde_r.getActualQ() - up_a_j[-1])) > 0.0001:
+    time.sleep(0.01)
+
+rtde_c.moveJ(down_a_j[0], VELOCITY, ACCELERATION, True)
+while np.sum(np.abs(rtde_r.getActualQ() - down_a_j[0])) > 0.0001:
+    time.sleep(0.01)
+
+rtde_c.moveJ(down_a_j[-1], VELOCITY, ACCELERATION, True)
+while np.sum(np.abs(rtde_r.getActualQ() - down_a_j[-1])) > 0.0001:
+    time.sleep(0.01)
+
+# return
+rtde_c.moveJ(up_b_j[0], VELOCITY, ACCELERATION, True)
+while np.sum(np.abs(rtde_r.getActualQ() - up_b_j[0])) > 0.0001:
+    time.sleep(0.01)
+
+rtde_c.moveJ(up_b_j[-1], VELOCITY, ACCELERATION, True)
+while np.sum(np.abs(rtde_r.getActualQ() - up_b_j[-1])) > 0.0001:
+    time.sleep(0.01)
+
+rtde_c.moveJ(down_b_j[0], VELOCITY, ACCELERATION, True)
+while np.sum(np.abs(rtde_r.getActualQ() - down_b_j[0])) > 0.0001:
+    time.sleep(0.01)
+
+rtde_c.moveJ(down_b_j[-1], VELOCITY, ACCELERATION, True)
+while np.sum(np.abs(rtde_r.getActualQ() - down_b_j[-1])) > 0.0001:
+    time.sleep(0.01)
+
+rtde_c.moveJ(q0, VELOCITY, ACCELERATION, True)
+while np.sum(np.abs(rtde_r.getActualQ() - q0)) > 0.0001:
+    time.sleep(0.01)
+
+
+RUNNING = False
+time.sleep(0.2)
+print("Stopped movement")
+rtde_c.stopScript()
+rtde_c.disconnect()
