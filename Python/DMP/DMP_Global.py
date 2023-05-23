@@ -7,75 +7,115 @@ from spatialmath import SE3
 from spatialmath.base import q2r   
 import spatialgeometry as sg
 import math
+from Python.DMP.dmp_joint import JointDMP
 
 class DMP_SPC:
 
     def __init__(self):
-        self.bSimulation = True
+
+        self.bSimulation = False
         self.bPLOT = True
         self.bTimeDifferece = True
         self.bSMOTHER   = True
-        self.bSaveFiles = True
+        self.bSaveFiles = False
         self.bOriention = True
         self.bDifferntTime = True
+
+        self.robot = rtb.models.UR5() 
+        self.robot.base = SE3(0,0,0)
+        self.robot.payload(1.390, [0,0, 0.057])
 
         self.DEOM_COLOR = 'orange'
         self.DMP_COLOR = 'blue'
         self.DMP_COLOR_NEW_POS = 'green'
 
-        self.DMP_J  = True
-        self.DMP_TCP = False
-        self.DMP_NEW_POS = True
-
-        self.RUN_DOWN_A = False
-        self.RUN_DOWN_B = False
-        self.RUN_UP_A = False
-        self.RUN_UP_B = True
-        
-
-        self.J_GOAL_POS_UP_A= np.array([-79.52, -30.42, 83.56, -56.42, -56.13, 2.97])
-        self.J_GOAL_POS_UP_A = np.deg2rad(self.J_GOAL_POS_UP_A)
-
-        self.J_GOAL_POS_UP_B = np.array([4.49, -18.11, 18.78, -94.43, -88.82, 107.88])
-        self.J_GOAL_POS_UP_B = np.deg2rad(self.J_GOAL_POS_UP_B)
-
-        self.J_GOAL_POS_DOWN_A = np.array([])
-        self.J_GOAL_POS_DOWN_B = np.deg2rad(np.array([5.76,-46.46, 74.44, -116.42, -87.39, -53.33]))
-
+        self.DMP_J  = False
+        self.DMP_TCP = True
+        self.DMP_NEW_POS = False
 
         
-        if self.RUN_DOWN_A:
-            self.TRAINING_TIME = 10.0
-            self.DMP_TIME = 10.0
-            self.FileName = 'Records/DOWN_A/20/'
-            if self.DMP_NEW_POS:
-                self.J_GOAL_POS  = self.J_GOAL_POS_DOWN_A
-                
+      
+
         
-        if self.RUN_DOWN_B:
-            self.TRAINING_TIME = 5.0
-            self.DMP_TIME = 5.0
-            self.FileName = 'Records/DOWN_B/20/'
-            if self.DMP_NEW_POS:
-                self.J_GOAL_POS  = self.J_GOAL_POS_DOWN_B
-
-        if self.RUN_UP_A:
-            self.TRAINING_TIME = 10.0
-            self.DMP_TIME = 10.0
-            self.FileName = 'Records/UP_A/20/'
-            if self.DMP_NEW_POS:
-                self.J_GOAL_POS  = self.J_GOAL_POS_UP_A
-
-        if self.RUN_UP_B:
-            self.TRAINING_TIME = 5.0
-            self.DMP_TIME = 5.0
-            self.FileName = 'Records/UP_B/20/'
-            if self.DMP_NEW_POS:
-                self.J_GOAL_POS  = self.J_GOAL_POS_UP_B
+        
         
         self.sOutPath = 'Python/DMP/Out/'
 
+    def set_specfication(self, index):
+        skill_name = ''
+        if index == 0:
+            self.TRAINING_TIME = 10.0
+            self.DMP_TIME = 10.0
+            self.FileName = 'Records/Down_A/20/'
+            skill_name = 'Down_A'
+          
+        if index == 1:
+            self.TRAINING_TIME = 3.0
+            self.DMP_TIME = 3.0
+            self.FileName = 'Records/Down_B/20/'
+            skill_name = 'Down_B'        
+
+        if index == 2:
+            self.TRAINING_TIME = 10.0
+            self.DMP_TIME = 10.0
+            self.FileName = 'Records/Up_A/20/'
+            skill_name = 'UP_A'      
+
+        if index == 3:
+            self.TRAINING_TIME = 5.0
+            self.DMP_TIME = 5.0
+            self.FileName = 'Records/Up_B/20/'
+            skill_name = 'UP_B'
+        
+        return skill_name
+
+    def maindmp(self):
+
+        """Return a list of the DMP joint angles and demo file joint angles.
+
+        Returns:
+            - dict_out['DOWN_A', 'DOWN_B', 'UP_A', 'UP_B']: DMP joint angles
+            - dict_demo['DOWN_A', 'DOWN_B', 'UP_A', 'UP_B']: DMP joint angles
+        """
+
+        N = 10
+        cs_alpha = -np.log(0.0001)
+        alpha=48
+        beta=12
+        
+        dict_out:dict = {
+        "Down_A": np.array(0),
+        "Down_B": np.array(0),
+        "UP_A": np.array(0),
+        "UP_B": np.array(0),
+        }
+        dict_demo:dict = {
+        "Down_A": np.array(0),
+        "Down_B": np.array(0),
+        "UP_A": np.array(0),
+        "UP_B": np.array(0),
+        }
+
+        for i in range(4):
+
+            skill_name = self.set_specfication(i)
+            _,demo_joint = self.read_demo_files(self.FileName, skip_lines=50)
+            tau = self.TRAINING_TIME
+            t_train = np.arange(0, tau, self.TRAINING_TIME/ len(demo_joint))
+
+            ## encode DMP 
+            dmp_q = JointDMP(NDOF=6,n_bfs=N, alpha=48, beta=12, cs_alpha=cs_alpha)
+            dmp_q.p0 = demo_joint[0].copy()
+            dmp_q.gp = demo_joint[-1].copy()
+            dmp_q.train(demo_joint, t_train, tau)
+            q_out, dq_out, ddq_out = dmp_q.rollout(t_train, tau, FX=True)
+
+            dict_out[skill_name] = q_out
+            dict_demo[skill_name] = demo_joint
+
     
+        return dict_out,dict_demo
+
 
     def euler_from_quaternion(self, x, y, z, w):
         """
@@ -222,6 +262,7 @@ class DMP_SPC:
         Returns:
             np.array: demo data and demo joint angles data
         """
+
         tuples =[]
         with open(filename + "record_tcp.txt", "r") as f:
             for i, line in enumerate(f):
@@ -286,7 +327,7 @@ class DMP_SPC:
         """
         
         tuples =[]
-        with open("Python/DMP/Out/DOWN_A_smoothing.txt", "r") as f:
+        with open("Python/DMP/Out/Down_A_smoothing.txt", "r") as f:
             for i, line in enumerate(f):
                 # Check if the line number is a multiple of skip_lines-1
                 if i % skip_lines == skip_lines-1:
@@ -295,7 +336,7 @@ class DMP_SPC:
         down_a = np.array(tuples)
         
         tuples =[]
-        with open("Python/DMP/Out/DOWN_B_smoothing.txt", "r") as f:
+        with open("Python/DMP/Out/Down_B_smoothing.txt", "r") as f:
             for i, line in enumerate(f):
                 # Check if the line number is a multiple of skip_lines-1
                 if i % skip_lines == skip_lines-1:
@@ -304,7 +345,7 @@ class DMP_SPC:
         down_b = np.array(tuples)
         
         tuples =[]
-        with open("Python/DMP/Out/UP_A_smoothing.txt", "r") as f:
+        with open("Python/DMP/Out/Up_A_smoothing.txt", "r") as f:
             for i, line in enumerate(f):
                 # Check if the line number is a multiple of skip_lines-1
                 if i % skip_lines == skip_lines-1:
@@ -313,7 +354,7 @@ class DMP_SPC:
         up_a = np.array(tuples)
         
         tuples =[]
-        with open("Python/DMP/Out/UP_B_smoothing.txt", "r") as f:
+        with open("Python/DMP/Out/Up_B_smoothing.txt", "r") as f:
             for i, line in enumerate(f):
                 # Check if the line number is a multiple of skip_lines-1
                 if i % skip_lines == skip_lines-1:
@@ -326,13 +367,13 @@ class DMP_SPC:
 
     def read_out_new_pos_file(self, DOWN_A ,DOWN_B, UP_A, UP_B, skip_lines=5):
         if DOWN_A:
-            spath = "Python/DMP/Out/DOWN_A_new_goal_pos.txt"
+            spath = "Python/DMP/Out/Down_A_new_goal_pos.txt"
         if DOWN_B:
-            spath = "Python/DMP/Out/DOWN_B_new_goal_pos.txt"
+            spath = "Python/DMP/Out/Down_B_new_goal_pos.txt"
         if UP_A:
-            spath = "Python/DMP/Out/UP_A_new_goal_pos.txt"
+            spath = "Python/DMP/Out/Up_A_new_goal_pos.txt"
         if UP_B:
-            spath = "Python/DMP/Out/UP_B_new_goal_pos.txt"
+            spath = "Python/DMP/Out/Up_B_new_goal_pos.txt"
 
         tuples =[]
         with open(spath, "r") as f:
@@ -344,7 +385,6 @@ class DMP_SPC:
         res = np.array(tuples)
 
         return res
-
 
     def getcolor(self,color):
 
@@ -481,4 +521,3 @@ class DMP_SPC:
         axs[5].legend()
        
         plt.show()
-

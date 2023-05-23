@@ -6,7 +6,7 @@ import numpy as np
 
 NAME = "GMM_B_DMP_A"
 #NAME = "DMP"
-#NAME = ""
+NAME = ""
 PATH :str = "Records/experiments/" + NAME
 TIME:int = 0.02
 
@@ -48,7 +48,7 @@ with open(f"{PATH}/acc.txt", "r") as file:
     # Read the lines of data from the file
     lines = file.readlines()
     if NAME == "GMM_B_DMP_A":
-        lines = lines[-1845:]
+        lines = lines[-1900:]#lines[-1845:]
 
     x_data = np.array([0])
     ax_data:dict = {
@@ -82,7 +82,7 @@ with open(f"{PATH}/vel.txt", "r") as file:
     # Read the lines of data from the file
     lines = file.readlines()
     if NAME == "GMM_B_DMP_A":
-        lines = lines[-1845:]
+        lines = lines[-1900:]#lines[-1845:]
     x_data = np.array([0])
     ax_data:dict = {
         "j1": np.array([0]),

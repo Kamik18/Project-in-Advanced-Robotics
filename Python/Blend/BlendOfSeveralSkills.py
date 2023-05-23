@@ -9,10 +9,11 @@ from Blend import Blend
 from rtde_control import RTDEControlInterface as RTDEControl
 from rtde_receive import RTDEReceiveInterface as RTDEReceive
 import time
-from Python.Gripper.RobotiqGripper import RobotiqGripper
+import Python.Gripper.RobotiqGripper as RobotiqGripper
 import Python.GMM.GMM as GMM
 import threading
 import Python.DMP.DMP_Global as DMP
+import copy
 
 
 RUNNING: bool = True
@@ -116,8 +117,8 @@ def adddotsjoints(traj, colorref):
         q = UR5.fkine(joint_pos)
         mark = Sphere(0.01, pose=q, color=colorref)
         env.add(mark)
-        UR5.q = joint_pos
-        env.step(0.1)
+        #UR5.q = joint_pos
+        #env.step(0.1)
 
 def getData(method: str = "") -> tuple:
     """Get the data from the records
@@ -130,7 +131,10 @@ def getData(method: str = "") -> tuple:
     """
     if method == "DMP":
         dmp_spec = DMP.DMP_SPC()
-        down_a_j, down_b_j,up_a_j, up_b_j = dmp_spec.read_out_file(skip_lines=5)
+        dmp_data,_ = dmp_spec.maindmp()
+        down_a_j, down_b_j,up_a_j, up_b_j = dmp_data['Down_A'], dmp_data['Down_B'], dmp_data['UP_A'], dmp_data['UP_B']
+        
+        #down_a_j, down_b_j,up_a_j, up_b_j = dmp_spec.read_out_file(skip_lines=5)
         #down_b_j = dmp_spec.read_out_new_pos_file(skip_lines=1,DOWN_B=True, UP_B=False, UP_A=False, DOWN_A=False)
         #up_b_j = dmp_spec.read_out_new_pos_file(skip_lines=5,UP_B=True, DOWN_B=False, UP_A=False, DOWN_A=False)
          
@@ -159,15 +163,77 @@ def getData(method: str = "") -> tuple:
         down_a_j: np.ndarray = np.loadtxt("./Records/Down_A/1/record_j.txt", delimiter=',', skiprows=0)[::50]
     return up_b_j, down_b_j, up_a_j, down_a_j
 
-def blendPath(plot: bool = False):
-    up_b_j_dmp, down_b_j_dmp, up_a_j_dmp, down_a_j_dmp = getData("DMP")
-    up_b_j, down_b_j, up_a_j, down_a_j, cov_up_b, cov_down_b, cov_up_a, cov_down_a = getData("GMM")
-    #up_b_j, down_b_j, up_a_j, down_a_j = getData()       
+def printGMMcov(stored_traj, desired_traj, comb_traj, comb_traj_opti):
+    #fig2, (ax0, ax1, ax2, ax3, ax4, ax5) = plt.subplots(nrows=6, ncols=2,figsize=(6,8))
+    #fig2, ((ax0, ax0_c), (ax1, ax1_c), (ax2, ax2_c), (ax3, ax3_c), (ax4, ax4_c), (ax5, ax5_c)) = plt.subplots(nrows=6, ncols=2,figsize=(12,8))
+    x_len = np.linspace(0, 2, len(desired_traj))
+    x_len_c = np.linspace(0, 4, len(comb_traj))
+    fig2, ((ax0, ax0_c, ax0_o), (ax1, ax1_c, ax1_o), (ax2, ax2_c, ax2_o), (ax3, ax3_c, ax3_o), (ax4, ax4_c, ax4_o), (ax5, ax5_c, ax5_o)) = plt.subplots(nrows=6, ncols=3,figsize=(15,8))
+    ax0.set_title('Covariance optimization')
+    ax0_c.set_title('Gap between two trajectories')
+    ax0_o.set_title('Optimized gap between two trajectories')
+    ax0.scatter(x_len,desired_traj[:,0], label='j0_bf', marker='.')
+    ax1.scatter(x_len,desired_traj[:,1], label='j1_bf', marker='.')
+    ax2.scatter(x_len,desired_traj[:,2], label='j2_bf', marker='.')
+    ax3.scatter(x_len,desired_traj[:,3], label='j3_bf', marker='.')
+    ax4.scatter(x_len,desired_traj[:,4], label='j4_bf', marker='.')
+    ax5.scatter(x_len,desired_traj[:,5], label='j5_bf', marker='.')
 
+    ax0.scatter(x_len,stored_traj[:,0], label='j0_af', marker='.')
+    ax1.scatter(x_len,stored_traj[:,1], label='j1_af', marker='.')
+    ax2.scatter(x_len,stored_traj[:,2], label='j2_af', marker='.')
+    ax3.scatter(x_len,stored_traj[:,3], label='j3_af', marker='.')
+    ax4.scatter(x_len,stored_traj[:,4], label='j4_af', marker='.')
+    ax5.scatter(x_len,stored_traj[:,5], label='j5_af', marker='.')
+    ax0.legend(); ax1.legend(); ax2.legend(); ax3.legend(); ax4.legend(); ax5.legend()
+    
+    x_len_c = np.linspace(0, 4, len(comb_traj))
+    ax0_c.scatter(x_len_c,comb_traj[:,0], label='j0_bf', marker='.')
+    ax1_c.scatter(x_len_c,comb_traj[:,1], label='j1_bf', marker='.')
+    ax2_c.scatter(x_len_c,comb_traj[:,2], label='j2_bf', marker='.')
+    ax3_c.scatter(x_len_c,comb_traj[:,3], label='j3_bf', marker='.')
+    ax4_c.scatter(x_len_c,comb_traj[:,4], label='j4_bf', marker='.')
+    ax5_c.scatter(x_len_c,comb_traj[:,5], label='j5_bf', marker='.')
+    ax0_c.legend(); ax1_c.legend(); ax2_c.legend(); ax3_c.legend(); ax4_c.legend(); ax5_c.legend()
+
+    ax0_o.scatter(x_len_c,comb_traj_opti[:,0], label='j0_af', marker='.')
+    ax1_o.scatter(x_len_c,comb_traj_opti[:,1], label='j1_af', marker='.')
+    ax2_o.scatter(x_len_c,comb_traj_opti[:,2], label='j2_af', marker='.')
+    ax3_o.scatter(x_len_c,comb_traj_opti[:,3], label='j3_af', marker='.')
+    ax4_o.scatter(x_len_c,comb_traj_opti[:,4], label='j4_af', marker='.')
+    ax5_o.scatter(x_len_c,comb_traj_opti[:,5], label='j5_af', marker='.')
+    ax0_o.legend(); ax1_o.legend(); ax2_o.legend(); ax3_o.legend(); ax4_o.legend(); ax5_o.legend()
+    plt.show()
+
+def blendPath(plot: bool = False):
+    #up_b_j_dmp, down_b_j_dmp, up_a_j_dmp, down_a_j_dmp = getData("DMP")
+    up_b_j, down_b_j, up_a_j, down_a_j, cov_up_b, cov_down_b, cov_up_a, cov_down_a = getData("GMM")
+    up_b_j, down_b_j, up_a_j, down_a_j = getData()       
+    """
+    home_to_start = blendClass.makeTraj(q0, up_b_j[0])
+    B_A = blendClass.makeTraj(down_b_j[-1], up_a_j[0])
+    A_B = blendClass.makeTraj(down_a_j[-1], up_b_j[0])
+    return_to_start = blendClass.makeTraj(down_b_j[-1], q0)
+    adddotsjoints(home_to_start.q,(1,0,0))
+    adddotsjoints(up_b_j,(0,1,0))
+    adddotsjoints(down_b_j,(0,0,1))
+    adddotsjoints(B_A.q,(1,1,0))
+    adddotsjoints(up_a_j,(1,0,1))
+    adddotsjoints(down_a_j,(0,1,1))
+    adddotsjoints(A_B.q,(1,1,1))
+    adddotsjoints(up_b_j,(0,1,0))
+    adddotsjoints(return_to_start.q,(0,0,0))
+    env.hold()
+    """
+    stored_up_b = copy.deepcopy(up_b_j)
+    stored_down_b = copy.deepcopy(down_b_j)
+    stored_up_a = copy.deepcopy(up_a_j)
+    stored_down_a = copy.deepcopy(down_a_j)
+    
     try:
         print(type(cov_up_b))
         def reduce_dist(prev_point: np.ndarray, curr_point: np.ndarray, cov: np.ndarray) -> np.ndarray:
-            cov *= 1.95
+            cov *= 1.96
             for i in range(len(prev_point)):
                 if (prev_point[i] - curr_point[i]) > cov[i]:
                     curr_point[i] += cov[i]
@@ -190,7 +256,7 @@ def blendPath(plot: bool = False):
         # Flip up_b_j and the covariance
         up_b_j = np.flip(up_b_j, axis=0)
         cov_up_b = np.flip(cov_up_b, axis=0)
-
+        
         # Optimize down_b_j
         # Flip down_b_j and the covariance
         down_b_j = np.flip(down_b_j, axis=0)
@@ -202,7 +268,7 @@ def blendPath(plot: bool = False):
         # Flip down_b_j and the covariance
         down_b_j = np.flip(down_b_j, axis=0)
         cov_down_b = np.flip(cov_down_b, axis=0)
-
+        
         # Optimize up_a_j
         # Flip up_a_j and the covariance
         up_a_j = np.flip(up_a_j, axis=0)
@@ -214,7 +280,7 @@ def blendPath(plot: bool = False):
         # Flip up_a_j and the covariance
         up_a_j = np.flip(up_a_j, axis=0)
         cov_up_a = np.flip(cov_up_a, axis=0)
-
+        
         # Optimize down_a_j
         # Flip down_a_j and the covariance
         down_a_j = np.flip(down_a_j, axis=0)
@@ -226,31 +292,38 @@ def blendPath(plot: bool = False):
         # Flip down_a_j and the covariance
         down_a_j = np.flip(down_a_j, axis=0)
         cov_down_a = np.flip(cov_down_a, axis=0)
+        
     except Exception as e:
         print(e)
 
-
+    #printGMMcov(stored_up_b, up_b_j, np.concatenate([stored_up_b, stored_down_b]), np.concatenate([up_b_j, down_b_j]))
+    
     # Merge the paths
-    #up_b_j = up_b_j_dmp
+    #up_b_j = up_b_j_dmp 
     #down_b_j = down_b_j_dmp
-    up_a_j = up_a_j_dmp
-    down_a_j = down_a_j_dmp
-    print(up_a_j.shape)
-    print(down_a_j.shape)
-
-
+    #up_a_j = up_a_j_dmp
+    #down_a_j = down_a_j_dmp
+    
+    #up_b_j, down_b_j, up_a_j, down_a_j= getData()
     # Connection paths
     home_to_start = blendClass.makeTraj(q0, up_b_j[0])
     return_to_start = blendClass.makeTraj(down_b_j[-1], q0)
 
-    move_to_pickup = blendClass.blendJointTraj(home_to_start.q, up_b_j, 5, plot=False)
-    blendedPath2 = blendClass.blendJointTraj2(down_b_j, up_a_j, 
+    move_to_pickup = blendClass.blend_with_viapoints(home_to_start.q, up_b_j,  
+                                                np.array([home_to_start.q[-20], up_b_j[0], up_b_j[20]]),
+                                                5, plot=True)
+    
+    blendedPath2 = blendClass.blend_with_viapoints(down_b_j, up_a_j, 
                                             np.array([down_b_j[-20], down_b_j[-1], up_a_j[0], up_a_j[20]]),
                                             5, plot=False)
-    blendedPath3 = blendClass.blendJointTraj2(down_a_j, up_b_j, 
+    
+    blendedPath3 = blendClass.blend_with_viapoints(down_a_j, up_b_j, 
                                             np.array([down_a_j[-20], down_a_j[-1], up_b_j[0],up_b_j[20]]), 
                                             5, plot=False)
-    return_to_home = blendClass.blendJointTraj(down_b_j, return_to_start.q, 5, plot=False)
+    
+    return_to_home = blendClass.blend_with_viapoints(down_b_j, return_to_start.q, 
+                                                     np.array([down_b_j[-20], return_to_start.q[0], return_to_start.q[20]]),
+                                                     5, plot=False)
 
     def remove_near_points(points:np.ndarray, start:int = 10, end:int = 10) -> np.ndarray:
         if len(points) < (start + end):
@@ -285,11 +358,12 @@ def blendPath(plot: bool = False):
     if plot:
         adddotsjoints(move_to_pickup,(1,0,0))
         adddotsjoints(move_insert_return,(0,1,0))
-        adddotsjoints(return_to_home,(1,0,0))
-    
+        adddotsjoints(return_to_home,(0,0,1))
+        env.hold()
     return move_to_pickup, move_insert_return, return_to_home
 
 def oriPath(plot : bool = False):
+    up_b_j, down_b_j, up_a_j, down_a_j = getData()
     home_to_start = blendClass.makeTraj(q0, up_b_j[0])
     return_to_start = blendClass.makeTraj(down_b_j[-1], q0)
     connection_b_a = blendClass.makeTraj(down_b_j[-1], up_a_j[0])
@@ -309,7 +383,19 @@ def oriPath(plot : bool = False):
 def log():
     global RUNNING
 
+    folder = "moveJ"
+
     rtde_r = RTDEReceive(IP)
+    with open(f"./Records/experiments/{folder}/acc.txt", "w") as f:
+        f.write(f" ")
+    with open(f"./Records/experiments/{folder}/vel.txt", "w") as f:
+        f.write(f" ")
+    with open(f"./Records/experiments/{folder}/pos.txt", "w") as f:
+        f.write(f" ")
+    with open(f"./Records/experiments/{folder}/tcp.txt", "w") as f:
+        f.write(f" ")
+    with open(f"./Records/experiments/{folder}/tcp_speed.txt", "w") as f:
+        f.write(f" ")
 
     while RUNNING:
         start_time = time.time()
@@ -317,12 +403,21 @@ def log():
         # Read joint acceleration, velocity
         acc = rtde_r.getTargetQdd()
         vel = rtde_r.getActualQd()
-
+        tcp = rtde_r.getActualTCPPose()
+        pos = rtde_r.getActualQ()
+        tcp_speed = rtde_r.getActualTCPSpeed()
         # Append to file
-        with open("./Records/experiments/acc.txt", "a") as f:
+        with open(f"./Records/experiments/{folder}/acc.txt", "a") as f:
             f.write(f"{acc}\n")
-        with open("./Records/experiments/vel.txt", "a") as f:
+        with open(f"./Records/experiments/{folder}/vel.txt", "a") as f:
             f.write(f"{vel}\n")
+        with open(f"./Records/experiments/{folder}/pos.txt", "a") as f:
+            f.write(f"{pos}\n")
+        with open(f"./Records/experiments/{folder}/tcp.txt", "a") as f:
+            f.write(f"{tcp}\n")
+        with open(f"./Records/experiments/{folder}/tcp_speed.txt", "a") as f:
+            f.write(f"{tcp_speed}\n")
+            
         
         # Wait for timestep
         delta_time = time.time() - start_time
@@ -346,10 +441,10 @@ def runRobot(speed,move_to_pickup, move_insert_return, return_to_home):
     rtde_c.speedStop()
     time.sleep(1)
 
-    gripper = RobotiqGripper()
-    gripper.connect(IP, 63352)
-    gripper.activate()
-    gripper.move_and_wait_for_pos(position=0, speed=5, force=25)
+    #gripper = RobotiqGripper()
+    #gripper.connect(IP, 63352)
+    #gripper.activate()
+    #gripper.move_and_wait_for_pos(position=0, speed=5, force=25)
 
     # Thread for force plot
     log_thread = threading.Thread(target=log)
@@ -366,7 +461,7 @@ def runRobot(speed,move_to_pickup, move_insert_return, return_to_home):
         time.sleep(speed)
 
     # Grip the object
-    gripper.move_and_wait_for_pos(position=255, speed=5, force=25)
+    #gripper.move_and_wait_for_pos(position=255, speed=5, force=25)
     time.sleep(1.0)
 
     for joint in move_insert_return:
@@ -374,7 +469,7 @@ def runRobot(speed,move_to_pickup, move_insert_return, return_to_home):
         time.sleep(speed)
         
     # release the object
-    gripper.move_and_wait_for_pos(position=0, speed=5, force=25)
+    #gripper.move_and_wait_for_pos(position=0, speed=5, force=25)
     time.sleep(1.0)
 
     for joint in return_to_home:
@@ -396,12 +491,12 @@ blendClass = Blend(UR5=UR5, box=box)
 q0 =  np.array([0, -np.pi / 2, np.pi / 2, -np.pi / 2, -np.pi / 2, -np.pi / 2])
 UR5.q = q0
 
-swiftEnv = True
+swiftEnv = False
 if swiftEnv:
     env = swift.Swift()
     env.launch(realtime=True)
     # Create an obstacles
-    env.add(box)
+    #env.add(box)
     # Add robot to env
     env.add(UR5)
     # Move the robot to the start position
@@ -409,84 +504,93 @@ if swiftEnv:
 
 
 #move_to_pickup, move_insert_return, return_to_home = oriPath(swiftEnv)
-move_to_pickup, move_insert_return, return_to_home = blendPath(swiftEnv)
+#move_to_pickup, move_insert_return, return_to_home = blendPath(swiftEnv)
 
-
+#exit(1)
 speed = 0.1
-if not swiftEnv:
-    runRobot(speed, move_to_pickup, move_insert_return, return_to_home)
+#if not swiftEnv:
+    #runRobot(speed, move_to_pickup, move_insert_return, return_to_home)
 
-exit(1)
-def create_outer_ellipsoid(tcp, xr, yr, zr, num_points=1000):
-    """
-    Create an ellipsoid with specified center and radii and return only the outer points.
-    
-    Args:
-    - xc, yc, zc: coordinates of the center of the ellipsoid
-    - xr, yr, zr: radii of the ellipsoid along the x, y, and z axes
-    - num_points: number of points to generate (default: 100)
-    
-    Returns:
-    - ellipsoid_points: a (N, 3) array of x, y, and z coordinates of the outer ellipsoid points
-    """
-    # Generate random points on a sphere
-    u = np.random.rand(num_points)
-    v = np.random.rand(num_points)
-    theta = 2 * np.pi * u
-    phi = np.arccos(2 * v - 1)
-    
-    # Convert spherical to Cartesian coordinates
-    xc, yc, zc = tcp.t[0], tcp.t[1], tcp.t[2]
-    x = xr * np.sin(phi) * np.cos(theta) + xc
-    y = yr * np.sin(phi) * np.sin(theta) + yc
-    z = zr * np.cos(phi) + zc
+RUNNING = True
 
-    # Append the center point
-    x = np.append(x, xc)
-    y = np.append(y, yc)
-    z = np.append(z, zc)
-    
-    # Calculate distance of each point from the center
-    d = np.sqrt((x - xc)**2 + (y - yc)**2 + (z - zc)**2)
-        
-    return np.column_stack((x, y, z))
-    
-# Create sphere around points based on covariance
-tcp = UR5.fkine(up_b_j[0])
+#run robot
+rtde_c = RTDEControl(IP)
+print("Starting RTDE test script...")
+VELOCITY = 1.5
+ACCELERATION = 0.265
+BLEND = 0
 
-index: int = 15
-print(len(down_b_j))
-print(len(cov_down_b))
-print(down_b_j[index])
-print(cov_down_b[index])
+rtde_c.moveJ(q0, VELOCITY, ACCELERATION, False)
+rtde_c.speedStop()
+time.sleep(1)
 
-xr, yr, zr = 4, 3, 2
-ellipsoid_points = create_outer_ellipsoid(tcp, xr, yr, zr)
-# Print number of outer points
-print("Number of outer points:", len(ellipsoid_points))
+# Thread for force plot
+log_thread = threading.Thread(target=log)
+log_thread.start()
+rtde_r = RTDEReceive(IP)
+# Move asynchronously in joint space to new_q, we specify asynchronous behavior by setting the async parameter to
+# 'True'. Try to set the async parameter to 'False' to observe a default synchronous movement, which cannot be stopped
+# by the stopJ function due to the blocking behaviour.
+
+up_b_j, down_b_j, up_a_j, down_a_j = getData()
+# up_b
+rtde_c.moveJ(up_b_j[0], VELOCITY, ACCELERATION, True)
+while np.sum(np.abs(rtde_r.getActualQ() - up_b_j[0])) > 0.0001:
+    time.sleep(0.01)
+
+rtde_c.moveJ(up_b_j[-1], VELOCITY, ACCELERATION, True)
+while np.sum(np.abs(rtde_r.getActualQ() - up_b_j[-1])) > 0.0001:
+    time.sleep(0.01)    
+
+rtde_c.moveJ(down_b_j[0], VELOCITY, ACCELERATION, True)
+while np.sum(np.abs(rtde_r.getActualQ() - down_b_j[0])) > 0.0001:
+    time.sleep(0.01)
+
+rtde_c.moveJ(down_b_j[-1], VELOCITY, ACCELERATION, True)
+while np.sum(np.abs(rtde_r.getActualQ() - down_b_j[-1])) > 0.0001:
+    time.sleep(0.01)
+
+# up_a
+rtde_c.moveJ(up_a_j[0], VELOCITY, ACCELERATION, True)
+while np.sum(np.abs(rtde_r.getActualQ() - up_a_j[0])) > 0.0001:
+    time.sleep(0.01)
+
+rtde_c.moveJ(up_a_j[-1], VELOCITY, ACCELERATION, True)
+while np.sum(np.abs(rtde_r.getActualQ() - up_a_j[-1])) > 0.0001:
+    time.sleep(0.01)
+
+rtde_c.moveJ(down_a_j[0], VELOCITY, ACCELERATION, True)
+while np.sum(np.abs(rtde_r.getActualQ() - down_a_j[0])) > 0.0001:
+    time.sleep(0.01)
+
+rtde_c.moveJ(down_a_j[-1], VELOCITY, ACCELERATION, True)
+while np.sum(np.abs(rtde_r.getActualQ() - down_a_j[-1])) > 0.0001:
+    time.sleep(0.01)
+
+# return
+rtde_c.moveJ(up_b_j[0], VELOCITY, ACCELERATION, True)
+while np.sum(np.abs(rtde_r.getActualQ() - up_b_j[0])) > 0.0001:
+    time.sleep(0.01)
+
+rtde_c.moveJ(up_b_j[-1], VELOCITY, ACCELERATION, True)
+while np.sum(np.abs(rtde_r.getActualQ() - up_b_j[-1])) > 0.0001:
+    time.sleep(0.01)
+
+rtde_c.moveJ(down_b_j[0], VELOCITY, ACCELERATION, True)
+while np.sum(np.abs(rtde_r.getActualQ() - down_b_j[0])) > 0.0001:
+    time.sleep(0.01)
+
+rtde_c.moveJ(down_b_j[-1], VELOCITY, ACCELERATION, True)
+while np.sum(np.abs(rtde_r.getActualQ() - down_b_j[-1])) > 0.0001:
+    time.sleep(0.01)
+
+rtde_c.moveJ(q0, VELOCITY, ACCELERATION, True)
+while np.sum(np.abs(rtde_r.getActualQ() - q0)) > 0.0001:
+    time.sleep(0.01)
 
 
-
-
-# plot tcp in 3D matplotlib plot   
-fig_paths = plt.figure(figsize=(10, 5))
-ax = fig_paths.add_subplot(111, projection='3d')
-#plot center point
-ax.scatter(tcp.t[0], tcp.t[1], tcp.t[2],c='r',marker='o')
-ax.scatter(ellipsoid_points[:, 0], ellipsoid_points[:, 1], ellipsoid_points[:, 2], c='b', marker='.')
-"""
-# Plot ellipsoid points
-ax.scatter([p[0] for p in ellipsoid_points], 
-           [p[1] for p in ellipsoid_points], 
-           [p[2] for p in ellipsoid_points], 
-           c='b', marker='.')
-"""
-ax.set_xlim([tcp.t[0]-xr-1, tcp.t[0]+xr+1])
-ax.set_ylim([tcp.t[1]-yr-1, tcp.t[1]+yr+1])
-ax.set_zlim([tcp.t[2]-zr-1, tcp.t[2]+zr+1])
-ax.set_xlabel('X')
-ax.set_ylabel('Y')
-ax.set_zlabel('Z')
-plt.show()
-
-
+RUNNING = False
+time.sleep(0.2)
+print("Stopped movement")
+rtde_c.stopScript()
+rtde_c.disconnect()

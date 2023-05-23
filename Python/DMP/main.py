@@ -16,17 +16,35 @@ import DMP_Global as dmp_spc
 
 
 if __name__ == '__main__':
-
-    dmp_spc = dmp_spc.DMP_SPC()    
     
+    dmp_spc = dmp_spc.DMP_SPC()    
+    out, demo = dmp_spc.maindmp()
+    fig, axs = plt.subplots(6, 1,figsize=(6.4, 8.6))
+    skillname = 'DOWN_A'
+    
+    # plot data
+    for i in range(6):
+        axs[i].plot( out[skillname][:, i], label='No-blend', color='red' , linewidth=0.5)
+        axs[i].plot( demo[skillname][:, i], label='No-blend', color='blue' , linewidth=0.5)
+        axs[i].set_ylabel(f'$q_{i+1} [rad2]$')
+        
+        # Hide the x-axis tick labels for the first five subplots
+        if i < 5:
+            axs[i].set_xticklabels([])
+    
+    plt.show()
+    
+    exit()
     demo,demo_joint = dmp_spc.read_demo_files(dmp_spc.FileName, skip_lines=10)
 
     print('demo_tcp: ', demo.shape)
     print('demo_joint: ', demo_joint.shape)
-
-    N = 100
-    cs_alpha = -np.log(0.0001)
+    
    
+    N = 10
+    cs_alpha = -np.log(0.0001)
+    alpha=48
+    beta=12
    
     if dmp_spc.DMP_J:
         tau = dmp_spc.TRAINING_TIME
@@ -48,6 +66,7 @@ if __name__ == '__main__':
 
         
         if dmp_spc.DMP_NEW_POS:
+            print("##HEJ REMBER TO CHANGE THE NEW POS##")
             start_pos = np.deg2rad(np.array([5.78, -54.54, 54.61, -88.50, -87.3, -53.30]))
             end_pos = np.deg2rad(np.array([5.76,-46.46, 74.44, -116.42, -87.39, -53.33]))
             dmp_q.p0 = start_pos
@@ -71,48 +90,48 @@ if __name__ == '__main__':
             xlabel = 't [$s$]'
             title = 'DMP-Joint'
             DEMO_LABEL = 'Demo'
-            DMP_LABEL = 'DMP'
+            dmp_spc.DEMO_LABEL = 'DMP'
             DMP_LABEL_NEW_POS = 'DMP-gp'
 
             fig5, axs = plt.subplots(6, 1, sharex=True)
             fig5.suptitle(title, fontsize=16)
             axs[0].plot(t_train, demo_joint[:, 0], '--', label=DEMO_LABEL, color=dmp_spc.DEOM_COLOR)
-            axs[0].plot(t, q_out[:, 0], label=DMP_LABEL, color=dmp_spc.DMP_COLOR)
+            axs[0].plot(t, q_out[:, 0], label=dmp_spc.DEMO_LABEL, color=dmp_spc.DMP_COLOR)
             if dmp_spc.DMP_NEW_POS:
                 axs[0].plot(t, q_out_new_pos[:, 0], label=DMP_LABEL_NEW_POS, color=dmp_spc.DMP_COLOR_NEW_POS)
             axs[0].set_xlabel(xlabel)
             axs[0].set_ylabel('$q_1$ [$rad$]')
 
             axs[1].plot(t_train, demo_joint[:, 1], '--', label=DEMO_LABEL, color=dmp_spc.DEOM_COLOR)
-            axs[1].plot(t, q_out[:, 1], label=DMP_LABEL, color=dmp_spc.DMP_COLOR)
+            axs[1].plot(t, q_out[:, 1], label=dmp_spc.DEMO_LABEL, color=dmp_spc.DMP_COLOR)
             if dmp_spc.DMP_NEW_POS:
                 axs[1].plot(t, q_out_new_pos[:, 1], label=DMP_LABEL_NEW_POS, color=dmp_spc.DMP_COLOR_NEW_POS)
             axs[1].set_xlabel(xlabel)
             axs[1].set_ylabel('$q_2$ [$rad$]')
 
             axs[2].plot(t_train, demo_joint[:, 2], '--', label=DEMO_LABEL, color=dmp_spc.DEOM_COLOR)
-            axs[2].plot(t, q_out[:, 2], label=DMP_LABEL, color=dmp_spc.DMP_COLOR)
+            axs[2].plot(t, q_out[:, 2], label=dmp_spc.DEMO_LABEL, color=dmp_spc.DMP_COLOR)
             if dmp_spc.DMP_NEW_POS:
                 axs[2].plot(t, q_out_new_pos[:, 2], label=DMP_LABEL_NEW_POS, color=dmp_spc.DMP_COLOR_NEW_POS)
             axs[2].set_xlabel(xlabel)
             axs[2].set_ylabel('$q_3$ [$rad$]')
 
             axs[3].plot(t_train, demo_joint[:, 3], '--', label=DEMO_LABEL, color=dmp_spc.DEOM_COLOR)
-            axs[3].plot(t, q_out[:, 3], label=DMP_LABEL, color=dmp_spc.DMP_COLOR)
+            axs[3].plot(t, q_out[:, 3], label=dmp_spc.DEMO_LABEL, color=dmp_spc.DMP_COLOR)
             if dmp_spc.DMP_NEW_POS:
                 axs[3].plot(t, q_out_new_pos[:, 3], label=DMP_LABEL_NEW_POS, color=dmp_spc.DMP_COLOR_NEW_POS)
             axs[3].set_xlabel(xlabel)
             axs[3].set_ylabel('$q_4$ [$rad$]')
 
             axs[4].plot(t_train, demo_joint[:, 4], '--', label=DEMO_LABEL, color=dmp_spc.DEOM_COLOR)
-            axs[4].plot(t, q_out[:, 4], label=DMP_LABEL, color=dmp_spc.DMP_COLOR)
+            axs[4].plot(t, q_out[:, 4], label=dmp_spc.DEMO_LABEL, color=dmp_spc.DMP_COLOR)
             if dmp_spc.DMP_NEW_POS:
                 axs[4].plot(t, q_out_new_pos[:, 4], label=DMP_LABEL_NEW_POS, color=dmp_spc.DMP_COLOR_NEW_POS)
             axs[4].set_xlabel(xlabel)
             axs[4].set_ylabel('$q_5$ [$rad$]')
 
             axs[5].plot(t_train, demo_joint[:, 5], '--', label=DEMO_LABEL, color=dmp_spc.DEOM_COLOR)
-            axs[5].plot(t, q_out[:, 5], label=DMP_LABEL, color=dmp_spc.DMP_COLOR)
+            axs[5].plot(t, q_out[:, 5], label=dmp_spc.DEMO_LABEL, color=dmp_spc.DMP_COLOR)
             if dmp_spc.DMP_NEW_POS:
                 axs[5].plot(t, q_out_new_pos[:, 5], label=DMP_LABEL_NEW_POS, color=dmp_spc.DMP_COLOR_NEW_POS)
             axs[5].set_xlabel(xlabel)
@@ -181,13 +200,13 @@ if __name__ == '__main__':
         print("tau_train: ", tau_train)
 
         #Position...
-        dmp = PositionDMP(n_bfs=N, alpha=40.0,beta=10.0)
+        dmp = PositionDMP(n_bfs=N, alpha=alpha,beta=beta,cs_alpha=cs_alpha)
         dmp.p0 = (demo_p[0])
         dmp.gp = (demo_p[len(demo_p)-1])
         dmp.train(demo_p, t_train, tau_train)
         
         # Rotation...
-        dmp_rotation = RotationDMP(n_bfs=N, alpha=40.0, beta=10.0)
+        dmp_rotation = RotationDMP(n_bfs=N, alpha=alpha,beta=beta,cs_alpha=cs_alpha)
         dmp_rotation.p0 = (demo_q[0])
         dmp_rotation.gp = (demo_q[len(demo_q)-1])
         dmp_rotation.train(demo_q, t_train, tau_train)
@@ -217,13 +236,6 @@ if __name__ == '__main__':
         dmp_r_new_goal, dmp_dr_new_goal, dmp_ddr_new_goal = dmp_rotation.rollout(t, tau)
 
         result_quat_array_new_goal = dmp_spc.quaternion_to_np_array(dmp_r_new_goal)
-
-        angle_axis_demo = dmp_spc.quat_to_angle_axis(demo_quat_array)
-        angle_axis = dmp_spc.quat_to_angle_axis(result_quat_array)
-
-        fig, axs = plt.subplots(6, 1, figsize=(10, 10))
-        axs[0].plot(angle_axis_demo[:, 0], label=DMP_LABEL_NEW_POS, color='red')
-        axs[0].plot(angle_axis[:, 0], label=DMP_LABEL_NEW_POS, color='red')
 
 
         if dmp_spc.bSimulation:
@@ -287,14 +299,52 @@ if __name__ == '__main__':
             np.savetxt(dmp_spc.sOutPath +  path +'new_goal_pos.txt', np.hstack((dmp_p_new_goal, angle_axis)), delimiter=',', fmt='%1.4f')
             
         if dmp_spc.bPLOT:
+            
             if dmp_spc.bTimeDifferece:
+
+                
+                DMP_LABEL = 'DMP'
+                DEMO_LABEL = 'DEMO'
+                xlabel = 'Time $[s]$'
+
+                fig, axs = plt.subplots(4, 1)            
+                axs[0].plot(t_train, demo_quat_array[:, 0], '--', label=DEMO_LABEL, color='red')
+                axs[0].plot(t, result_quat_array[:, 0], label=DMP_LABEL, color='blue')
+                axs[0].set_ylabel('Real')
+                
+                axs[1].plot(t_train, demo_quat_array[:, 1], '--', label=DEMO_LABEL, color='red')
+                axs[1].plot(t, result_quat_array[:, 1], label=DMP_LABEL, color='blue')
+                
+                axs[1].set_ylabel('Img 1')
+
+                axs[2].plot(t_train, demo_quat_array[:, 2], '--', label=DEMO_LABEL, color='red')
+                axs[2].plot(t, result_quat_array[:, 2], label=DMP_LABEL, color='blue')
+
+                axs[2].set_ylabel('Img 2')
+
+                axs[3].plot(t_train, demo_quat_array[:, 3], '--', label=DEMO_LABEL, color='red')
+                axs[3].plot(t, result_quat_array[:,3], label=DMP_LABEL, color='blue')
+                axs[3].set_xlabel(xlabel)
+                axs[3].set_ylabel('Img 3')
+
+                for i in range(4):
+                    axs[i].grid(False)
+                    axs[i].set_facecolor('white')
+
+                    # Set the color, linewidth, and edgecolor of the spines to draw a square box around each subplot
+                    for spine in axs[i].spines.values():
+                        spine.set_color('black')
+                        spine.set_linewidth(0.5)
+                        spine.set_edgecolor('black')
+                plt.savefig('Python\DMP\Out\Fig/rotation_dmp.pdf', bbox_inches='tight')
+                plt.show()
+                exit()
                 # Position DMP 3D    
                 fig1 = plt.figure(1)
                 fig1.suptitle('Position DMP', fontsize=16)
                 ax = plt.axes(projection='3d')
                 ax.plot3D(demo_p[:, 0], demo_p[:, 1], demo_p[:, 2], '--', label=DEMO_LABEL, color='red')
                 ax.plot3D(dmp_p[:, 0], dmp_p[:, 1],dmp_p[:, 2], label=DMP_LABEL, color='blue')
-                ax.plot3D(dmp_p_new_goal[:, 0], dmp_p_new_goal[:, 1],dmp_p_new_goal[:, 2], label=DMP_LABEL_NEW_POS, color='green')
                 
                 ax.set_xlabel('X')
                 ax.set_ylabel('Y')
@@ -303,28 +353,40 @@ if __name__ == '__main__':
                 
                 
                 # 2D plot the DMP against the original demonstration X, y, Z dir
-                fig2, axs = plt.subplots(3, 1, sharex=True)
-                fig2.suptitle('Position DMP', fontsize=16)
-                axs[0].plot(t_train, demo_p[:, 0], '--',label=DEMO_LABEL, color='red')
-                axs[0].plot(t, dmp_p[:, 0], label=DMP_LABEL, color='blue')
-                axs[0].plot(t, dmp_p_new_goal[:, 0], label=DMP_LABEL_NEW_POS, color='green')
                 
+                fig2, axs = plt.subplots(3, 1)              
+                            
+                axs[0].plot(t_train, demo_p[:, 0], '--',label=DEMO_LABEL, color='red')
+                axs[0].plot(t, dmp_p[:, 0], label=DMP_LABEL, color='blue')                
                 axs[0].set_xlabel(xlabel)
                 axs[0].set_ylabel('X')
+                axs[0].grid(False)
+                axs[0].set_facecolor('white')
 
                 
                 axs[1].plot(t_train, demo_p[:, 1], '--', label=DEMO_LABEL, color='red')
                 axs[1].plot(t, dmp_p[:, 1], label=DMP_LABEL, color='blue')
-                axs[1].plot(t, dmp_p_new_goal[:, 1], label=DMP_LABEL_NEW_POS, color='green')
                 axs[1].set_xlabel(xlabel)
                 axs[1].set_ylabel('Y')
+                axs[1].grid(False)
+                axs[1].set_facecolor('white')
 
+                
                 axs[2].plot(t_train, demo_p[:, 2], '--', label=DEMO_LABEL, color='red')
                 axs[2].plot(t, dmp_p[:, 2], label=DMP_LABEL, color='blue')
-                axs[2].plot(t, dmp_p_new_goal[:, 2], label=DMP_LABEL_NEW_POS, color='green')
                 axs[2].set_xlabel(xlabel)
                 axs[2].set_ylabel('Z')
                 axs[2].legend()
+                axs[2].grid(False)
+                axs[2].set_facecolor('white')
+
+                for spine in ax.spines.values():
+                    spine.set_color('black')
+                    spine.set_linewidth(0.5)
+                    spine.set_edgecolor('black')
+                
+                #save pdf as tight layout
+                plt.savefig('Python\DMP\Out\Fig/position_dmp.pdf', bbox_inches='tight')
 
                 #------------------------------------------------------------------------------------------#
                 # PLOT QUATERNION IN 3D
@@ -336,7 +398,6 @@ if __name__ == '__main__':
                     ax = plt.axes(projection='3d')
                     ax.plot3D(demo_quat_array[:, 1], demo_quat_array[:, 2], demo_quat_array[:, 3], '--', label=DEMO_LABEL, color='red')
                     ax.plot3D(result_quat_array[:, 1], result_quat_array[:, 2],result_quat_array[:, 3], label=DMP_LABEL, color='blue')
-                    ax.plot3D(result_quat_array_new_goal[:, 1], result_quat_array_new_goal[:, 2],result_quat_array_new_goal[:, 3], label=DMP_LABEL_NEW_POS, color='green')
                     
                     ax.set_xlabel('X')
                     ax.set_ylabel('Y')
@@ -346,31 +407,28 @@ if __name__ == '__main__':
 
                     # 2D plot the DMP against the original demonstration X, y, Z dir
                     fig5, axs = plt.subplots(4, 1, sharex=True)
-                    fig5.suptitle('Rotation DMP (Quaternion) ', fontsize=16)
+                    fig5.suptitle('Orientation DMP', fontsize=16)
                     axs[0].plot(t_train, demo_quat_array[:, 0], '--', label=DEMO_LABEL, color='red')
                     axs[0].plot(t, result_quat_array[:, 0], label=DMP_LABEL, color='blue')
-                    axs[0].plot(t, result_quat_array_new_goal[:, 0], label=DMP_LABEL_NEW_POS, color='green')
                     axs[0].set_xlabel(xlabel)
                     axs[0].set_ylabel('Real')
                     
                     axs[1].plot(t_train, demo_quat_array[:, 1], '--', label=DEMO_LABEL, color='red')
                     axs[1].plot(t, result_quat_array[:, 1], label=DMP_LABEL, color='blue')
-                    axs[1].plot(t, result_quat_array_new_goal[:, 1], label=DMP_LABEL_NEW_POS, color='green')
                     axs[1].set_xlabel(xlabel)
                     axs[1].set_ylabel('Img 1')
 
                     axs[2].plot(t_train, demo_quat_array[:, 2], '--', label=DEMO_LABEL, color='red')
                     axs[2].plot(t, result_quat_array[:, 2], label=DMP_LABEL, color='blue')
-                    axs[2].plot(t, result_quat_array_new_goal[:, 2], label=DMP_LABEL_NEW_POS, color='green')
                     axs[2].set_xlabel(xlabel)
                     axs[2].set_ylabel('Img 2')
 
                     axs[3].plot(t_train, demo_quat_array[:, 3], '--', label=DEMO_LABEL, color='red')
                     axs[3].plot(t, result_quat_array[:,3], label=DMP_LABEL, color='blue')
-                    axs[3].plot(t, result_quat_array_new_goal[:, 3], label=DMP_LABEL_NEW_POS, color='green')
                     axs[3].set_xlabel(xlabel)
                     axs[3].set_ylabel('Img 3')
                     axs[3].legend()
+                    plt.savefig('Python\DMP\Out\Fig/rotation_dmp.pdf', bbox_inches='tight')
 
         
 
