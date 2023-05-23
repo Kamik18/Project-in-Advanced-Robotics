@@ -1,5 +1,5 @@
-from Python.GMM.gmr.utils import check_random_state
-from Python.GMM.gmr import gmm, kmeansplusplus_initialization, covariance_initialization, MVN
+from gmr.utils import check_random_state
+from gmr import gmm, kmeansplusplus_initialization, covariance_initialization, MVN
 from itertools import cycle
 from sklearn.mixture import BayesianGaussianMixture
 from matplotlib.patches import Ellipse
@@ -180,7 +180,8 @@ class GMM:
 
         # Plot the data
         if visualize == "path":
-            fig_paths = plt.figure(figsize=(10, 5))
+            fig = plt.figure(figsize=(10, 5))
+            #fig.suptitle(f"GMM", fontsize=16, ha="center", color="black", fontweight="bold", fontfamily="sans-serif", y=0.9)
             ax = plt.axes(projection="3d")
             
             # Plot the covariance ellipses for the GMM path
@@ -209,8 +210,8 @@ class GMM:
                 basic_form = interpolate.splev(np.linspace(0, 1, 10), tck)
                 ax.plot(basic_form[0], basic_form[1],
                         path_gmm["z"][i], color='lime', lw=1, alpha=0.1)
-
-            '''
+            ax.plot([], [], [], color='lime', label="Tolerance")
+                
             # Add the measurements
             for i in range(len(self.__data)):
                 set: dict = {
@@ -220,17 +221,12 @@ class GMM:
                 }
                 ax.plot3D(set["x"], set["y"], set["z"],
                           color="black", alpha=0.25)
-
-            # Mean path
-            ax.plot3D(path_mean["x"], path_mean["y"],
-                      path_mean["z"], color="green", alpha=1.0, label="Mean")
-            '''
+            ax.plot([], [], [], color="black", label="Measurements")
 
             # Add the GMM path
             ax.plot3D(path_gmm["x"], path_gmm["y"],
-                      path_gmm["z"], color="red", alpha=1.0, label="GMM")
+                      path_gmm["z"], color="red", alpha=1.0, label="GMR")
 
-            ax.set_title(f"GMM with {len(self.__data)} demonstrations")
             ax.axis('equal')
             # Get the limits of the axis
             x_lim = (np.floor(ax.get_xlim()[0] * 10) / 10, np.ceil(ax.get_xlim()[1] * 10) / 10)
@@ -248,16 +244,15 @@ class GMM:
             ax.set_xlabel("x")
             ax.set_ylabel("y")
             ax.set_zlabel("z")
-            # Legend
-            ax.legend()
+            # Legend - outside the plot
+            ax.legend(loc='center left', bbox_to_anchor=(1.2, 0.5))
 
         elif visualize == "path2d":
             fig = plt.figure(figsize=(10, 5))
             # Add space between the subplots
             fig.subplots_adjust(wspace=0.5, hspace=0.5)
             # Create title
-            fig.suptitle(f"GMM {len(self.__data)} demonstrations", fontsize=16, ha="center",
-                         va="top", color="black", fontweight="bold", fontfamily="sans-serif")
+            #fig.suptitle(f"GMM", fontsize=16, ha="center", color="black", fontweight="bold", fontfamily="sans-serif", y=1.0)
 
             # Create 6 subplots
             axs: list = [plt.subplot(2, 3, i+1) for i in range(6)]
@@ -267,28 +262,30 @@ class GMM:
             # Plot the degrees of freedom for each axis over time
             for i in range(len(axs)):
                 axs[i].plot(self.__gmm_path[:, i], color="red",
-                            alpha=1.0, label="GMM")
-                axs[i].plot(self.__data[:, :, i].mean(axis=0),
-                            color="green", alpha=1.0, label="Mean")
+                            alpha=1.0, label="GMR")
                 axs[i].plot(self.__data[:, :, i].T, color="black", alpha=0.25)
 
                 axs[i].set_xlabel("Time [ms]")
                 axs[i].set_ylabel(axs_ylabels[i])
-                axs[i].legend()
+                #axs[i].legend()
+            axs[2].plot([], [], color="black", label="Measurements")
+
+            axs[2].legend(loc='center left', bbox_to_anchor=(1.0, -0.25))
 
         elif visualize == "covariance":
             # Plot the covariance matrices
-            fig_covariances = plt.figure(figsize=(10, 5))
+            fig = plt.figure(figsize=(10, 5))
+            #fig.suptitle(f"Covariances", fontsize=16, ha="center", color="black", fontweight="bold", fontfamily="sans-serif", y=0.8)
+
             ax = plt.axes()
             ax.set_aspect("equal", "box")
-            ax.plot(self.__data[:, :, 0].T, self.__data[:,
-                    :, 1].T, color="black", alpha=0.25)
+            ax.plot(self.__data[:, :, 0].T, self.__data[:, :, 1].T, color="black", alpha=0.25)
+            ax.plot([], [], color="black", label="Measurements")
+            
             # Add the GMM path
             ax.plot(path_gmm["x"], path_gmm["y"],
-                    color="red", alpha=1.0, label="GMM")
-            # Mean path
-            ax.plot(path_mean["x"], path_mean["y"],
-                    color="green", alpha=1.0, label="Mean")
+                    color="red", alpha=1.0, label="GMR")
+
             colors = cycle(["r", "g", "b"])
             for factor in np.linspace(0.5, 4.0, 4):
                 new_gmm = gmm(
@@ -302,43 +299,36 @@ class GMM:
                     ell.set_alpha(0.15)
                     ell.set_color(next(colors))
                     ax.add_artist(ell)
-            ax.set_title(f"Covariance matrices")
-            ax.set_xlabel("x [m]")
-            ax.set_ylabel("z [m]")
-            ax.legend(loc="upper right")
+            ax.set_xlabel("z [m]")
+            ax.set_ylabel("x [m]")
+            ax.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
 
         elif visualize == "tolerances":
             # Plot the tolerances
-            fig_tolerances = plt.figure(figsize=(10, 5))
+            fig = plt.figure(figsize=(10, 5))
+            #fig.suptitle(f"Tolerances", fontsize=16, ha="center", color="black", fontweight="bold", fontfamily="sans-serif", y=0.8)
+
             ax = plt.axes()
             ax.set_aspect("equal", "box")
-            ax.plot(self.__data[:, :, 0].T, self.__data[:,
-                    :, 1].T, color="black", alpha=0.25)
-            # Add the mean path
-            ax.plot(path_gmm["x"], path_gmm["y"],
-                    color="red", alpha=1.0, label="GMM")
-            # Mean path
-            ax.plot(path_mean["x"], path_mean["y"],
-                    color="green", alpha=1.0, label="Mean")
+            ax.plot(self.__data[:, :, 0].T, self.__data[:, :, 1].T, color="black", alpha=0.25)
+            ax.plot([], [], color="black", label="Measurements")
 
-            ax.set_title(f"GMM with {len(self.__data)} demonstrations")
-            ax.fill_between(
-                path_mean["x"],
-                path_mean["y"] - 1.96 * path_mean["y_std"],
-                path_mean["y"] + 1.96 * path_mean["y_std"],
-                color="blue", alpha=0.5)
+            # Add the GMM path
+            ax.plot(path_gmm["x"], path_gmm["y"], color="red", alpha=1.0, label="GMR")
+
             ax.fill_between(
                 path_gmm["x"],
-                path_gmm["y"] - path_gmm["y_std"],
-                path_gmm["y"] + path_gmm["y_std"],
+                path_gmm["y"] - path_gmm["y_std"]*1.96,
+                path_gmm["y"] + path_gmm["y_std"]*1.96,
                 color="green", alpha=0.5)
-            ax.set_title(f"Tolerances")
-            ax.set_xlabel("x [m]")
-            ax.set_ylabel("z [m]")
-            ax.legend()
+            ax.plot([], [], color="green", label="Tolerance")
+            
+            ax.set_xlabel("z [m]")
+            ax.set_ylabel("x [m]")
+            ax.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
 
         # Save the plot
-        plt.savefig(f"python/GMM/{visualize}.pdf", format="pdf", bbox_inches="tight")
+        plt.savefig(f"Python/GMM/results/{visualize}.pdf", format="pdf", bbox_inches="tight", transparent=True)
 
         # Visualize the plots
         plt.show()
@@ -381,22 +371,43 @@ class GMM:
 
 if __name__ == "__main__":
     #data:np.ndarray = simulation_data(n_demonstrations=20, n_steps=150)
-
-    data: np.ndarray = fetch_data_from_records(path="./Records/Up_A/**/Record_tcp.txt", skip_size=10)  # From up to down
-    #data: np.ndarray = fetch_data_from_records(path="./Records/Down_A/**/Record_tcp.txt", skip_size=10)
+    data: np.ndarray = fetch_data_from_records(path="Records/Up_A/**/Record_tcp.txt", skip_size=10)  # From up to down
+    data: np.ndarray = fetch_data_from_records(path="Records/Down_A/**/Record_tcp.txt", skip_size=10)
     #data: np.ndarray = fetch_data_from_records(path="./Records/Up_B/**/Record_tcp.txt", skip_size=10)
     #data: np.ndarray = fetch_data_from_records(path="./Records/Down_B/**/Record_tcp.txt", skip_size=10)
     print(data.shape)
 
-    """ Plot the covariance and the tolerances
-    temp_data = data[:, :, 1] # Store the x axis
-    data[:, :, 1] = data[:, :, 2] # Swap x and z axis 
-    data[:, :, 2] = temp_data    
-    """
+    GMM_translation: GMM = GMM(data=data, n_components=8)
+    #GMM_translation.plot("path")
+    #GMM_translation.plot("path2d")
+    #GMM_translation.plot("covariance")
+    #GMM_translation.plot("tolerances")
+    path_translation: np.ndarray = GMM_translation.get_path()
+
+    # Plot 2D path
+    data: np.ndarray = fetch_data_from_records(path="Records/Up_A/**/Record_tcp.txt", skip_size=10)
+
+    # Itterate the 4 dimension of the data
+    for demo in range(data.shape[0]):
+        for step in range(data.shape[1]):
+                if data[demo, step, 3] < 0:
+                    data[demo, step, 3] += np.pi * 2
 
     GMM_translation: GMM = GMM(data=data, n_components=8)
+    GMM_translation.plot("path2d")
+
+    # Plot covariance and tolerances
+    temp_data = data[:, :, 0] # Store the x axis
+    data[:, :, 0] = data[:, :, 2] # Swap x and z axis 
+    data[:, :, 2] = temp_data    
+
+    GMM_translation: GMM = GMM(data=data, n_components=8)
+    GMM_translation.plot("covariance")
+    GMM_translation.plot("tolerances")
+
+    # Plot 3D path 
+    data: np.ndarray = fetch_data_from_records(path="Records/Down_A/**/Record_tcp.txt", skip_size=10)
+    GMM_translation: GMM = GMM(data=data, n_components=8)
     GMM_translation.plot("path")
-    # GMM_translation.plot("path2d")
-    # GMM_translation.plot("covariance")
-    # GMM_translation.plot("tolerances")
-    path_translation: np.ndarray = GMM_translation.get_path()
+
+    
