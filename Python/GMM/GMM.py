@@ -1,5 +1,5 @@
-from gmr.utils import check_random_state
-from gmr import gmm, kmeansplusplus_initialization, covariance_initialization, MVN
+from Python.GMM.gmr.utils import check_random_state
+from Python.GMM.gmr import gmm, kmeansplusplus_initialization, covariance_initialization, MVN
 from itertools import cycle
 from sklearn.mixture import BayesianGaussianMixture
 from matplotlib.patches import Ellipse

@@ -271,7 +271,7 @@ def quadprog(point1, point2):
 
 def blendPath(plot: bool = False):
     up_b_j_dmp, down_b_j_dmp, up_a_j_dmp, down_a_j_dmp = getData("DMP")
-    #up_b_j, down_b_j, up_a_j, down_a_j, cov_up_b, cov_down_b, cov_up_a, cov_down_a = getData("GMM")
+    up_b_j, down_b_j, up_a_j, down_a_j, cov_up_b, cov_down_b, cov_up_a, cov_down_a = getData("GMM")
     up_b_j, down_b_j, up_a_j, down_a_j = getData()
 
     stored_up_b = copy.deepcopy(up_b_j)
@@ -292,7 +292,7 @@ def blendPath(plot: bool = False):
                     curr_point[i] = (prev_point[i] + curr_point[i]) / 2
                     
             return curr_point
-        """
+        
         # Optimize up_b_j
         # Flip up_b_j and the covariance
         up_b_j = np.flip(up_b_j, axis=0)
@@ -340,21 +340,30 @@ def blendPath(plot: bool = False):
         # Flip down_a_j and the covariance
         down_a_j = np.flip(down_a_j, axis=0)
         cov_down_a = np.flip(cov_down_a, axis=0)
-        """
+        
     except Exception as e:
         print(e)
 
-    #qp = quadprog(stored_up_a[-1], stored_down_a[0])
+    # Object A GMM
     #qp = quadprog(stored_up_a[-1], stored_down_a[0])
     #printGMMcov(stored_up_a,np.concatenate([stored_up_a, qp]), np.concatenate([stored_up_a, stored_down_a]), np.concatenate([stored_up_a, qp, stored_down_a]))
+    # Object B GMM
+    #qp = quadprog(stored_up_b[-1], stored_down_b[0])
+    #printGMMcov(stored_up_b, up_b_j, np.concatenate([stored_up_b, stored_down_b]), np.concatenate([up_b_j, down_b_j]))
+
+    # Object A QP
+    #qp = quadprog(stored_up_a[-1], stored_down_a[0])
+    #printGMMcov(stored_up_a,np.concatenate([stored_up_a, qp]), np.concatenate([stored_up_a, stored_down_a]), np.concatenate([stored_up_a, qp, stored_down_a]))
+    # Object B QP
+    #qp = quadprog(stored_up_b[-1], stored_down_b[0])
     #printGMMcov(stored_up_b, up_b_j, np.concatenate([stored_up_b, stored_down_b]), np.concatenate([up_b_j, down_b_j]))
     
     
     # Merge the paths
-    up_b_j = up_b_j_dmp 
-    down_b_j = down_b_j_dmp
-    up_a_j = up_a_j_dmp
-    down_a_j = down_a_j_dmp
+    #up_b_j = up_b_j_dmp 
+    #down_b_j = down_b_j_dmp
+    #up_a_j = up_a_j_dmp
+    #down_a_j = down_a_j_dmp
     
     #up_b_j, down_b_j, up_a_j, down_a_j= getData()
     # Connection paths
@@ -367,13 +376,13 @@ def blendPath(plot: bool = False):
     
     blendedPath2 = blendClass.blend_with_viapoints(down_b_j, up_a_j, 
                                             np.array([down_b_j[-20], down_b_j[-1], up_a_j[0], up_a_j[20]]),
-                                            5, plot=False)
+                                            5, plot=True)
     
     
     
     blendedPath3 = blendClass.blend_with_viapoints(down_a_j, up_b_j, 
                                             np.array([down_a_j[-20], down_a_j[-1], up_b_j[0],up_b_j[20]]), 
-                                            5, plot=False)
+                                            5, plot=True)
     
     return_to_home = blendClass.blend_with_viapoints(down_b_j, return_to_start.q, 
                                                      np.array([down_b_j[-20], return_to_start.q[0], return_to_start.q[20]]),
@@ -381,15 +390,17 @@ def blendPath(plot: bool = False):
     
     # Add Pick B QP
     qp1 = quadprog(move_to_pickup[-1], blendedPath2[0])
+    print(len(qp1))
     move_to_pickup = np.concatenate([move_to_pickup, qp1])
     # Add Insert A QP
     qp2 = quadprog(blendedPath2[-1], blendedPath3[0])
+    print(len(qp2))
     blendedPath2 = np.concatenate([blendedPath2, qp2])
     # Add Place B QP
     qp3 = quadprog(blendedPath3[-1], return_to_home[0])
     blendedPath3 = np.concatenate([blendedPath3, qp3])
 
-
+    exit(1)
     def remove_near_points(points:np.ndarray, start:int = 10, end:int = 10) -> np.ndarray:
         if len(points) < (start + end):
             return points

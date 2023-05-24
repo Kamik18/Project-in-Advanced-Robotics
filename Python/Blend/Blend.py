@@ -537,7 +537,7 @@ class Blend():
         """        
 
         # Convert to TCP
-        plot_tcp = False
+        plot_tcp = True
         if plot_tcp:
             for i in range(len(points)):
                 tcp = self.UR5.fkine(points[i])
@@ -623,23 +623,22 @@ class Blend():
             ax02.legend(); ax12.legend(); ax22.legend(); ax32.legend(); ax42.legend(); ax52.legend()
             plt.show()
             """
-            x_len = np.linspace(0, 2.65, len(traj1))
+            
             fig, (ax0, ax1, ax2, ax3, ax4, ax5) = plt.subplots(nrows=6, ncols=1,figsize=(6,8))
             if plot_tcp:
-                ax0.plot(x_len,traj1[:,0], label='x')#ax0.plot(res_j0[2],via_j0,'*',res_j0[3],trans[:,0], label='x')
-                ax1.plot(x_len,traj1[:,1], label='y')#ax1.plot(res_j1[2],via_j1,'*',res_j1[3],trans[:,1], label='y')
-                ax2.plot(x_len,traj1[:,2], label='z')#ax2.plot(res_j2[2],via_j2,'*',res_j2[3],trans[:,2], label='z')
-                ax3.plot(x_len,traj1[:,3], label='rz')#ax3.plot(res_j3[2],via_j3,'*',res_j3[3],trans[:,3], label='rz')
-                ax4.plot(x_len,traj1[:,4], label='ry')#ax4.plot(res_j4[2],via_j4,'*',res_j4[3],trans[:,4], label='ry')
-                ax5.plot(x_len,traj1[:,5], label='rz')#ax5.plot(res_j5[2],via_j5,'*',res_j5[3],trans[:,5], label='rz')
-                
+                ax0.plot(res_j0[2],via_j0,'*',res_j0[3],trans[:,0], label='x')
+                ax1.plot(res_j1[2],via_j1,'*',res_j1[3],trans[:,1], label='y')
+                ax2.plot(res_j2[2],via_j2,'*',res_j2[3],trans[:,2], label='z')
+                ax3.plot(res_j3[2],via_j3,'*',res_j3[3],trans[:,3], label='rx')
+                ax4.plot(res_j4[2],via_j4,'*',res_j4[3],trans[:,4], label='ry')
+                ax5.plot(res_j5[2],via_j5,'*',res_j5[3],trans[:,5], label='rz')
             else:
-                ax0.plot(res_j0[3],trans[:,0], label='j0')#ax0.plot(res_j0[2],via_j0,'*',res_j0[3],trans[:,0], label='j0')
-                ax1.plot(res_j1[3],trans[:,1], label='j1')#ax1.plot(res_j1[2],via_j1,'*',res_j1[3],trans[:,1], label='j1')
-                ax2.plot(res_j2[3],trans[:,2], label='j2')#ax2.plot(res_j2[2],via_j2,'*',res_j2[3],trans[:,2], label='j2')
-                ax3.plot(res_j3[3],trans[:,3], label='j3')#ax3.plot(res_j3[2],via_j3,'*',res_j3[3],trans[:,3], label='j3')
-                ax4.plot(res_j4[3],trans[:,4], label='j4')#ax4.plot(res_j4[2],via_j4,'*',res_j4[3],trans[:,4], label='j4')
-                ax5.plot(res_j5[3],trans[:,5], label='j5')#ax5.plot(res_j5[2],via_j5,'*',res_j5[3],trans[:,5], label='j5')
+                ax0.plot(res_j0[2],via_j0,'*',res_j0[3],trans[:,0], label='j0')
+                ax1.plot(res_j1[2],via_j1,'*',res_j1[3],trans[:,1], label='j1')
+                ax2.plot(res_j2[2],via_j2,'*',res_j2[3],trans[:,2], label='j2')
+                ax3.plot(res_j3[2],via_j3,'*',res_j3[3],trans[:,3], label='j3')
+                ax4.plot(res_j4[2],via_j4,'*',res_j4[3],trans[:,4], label='j4')
+                ax5.plot(res_j5[2],via_j5,'*',res_j5[3],trans[:,5], label='j5')
                 
             fig.text(0.04, 0.70, 'Position [m]', va='center', rotation='vertical')
             fig.text(0.04, 0.30, 'Axis-angle [rad]', va='center', rotation='vertical')
