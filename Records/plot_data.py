@@ -15,16 +15,10 @@ def read_exp_dat(file):
     data = np.array([np.fromstring(line[1:-1], sep=', ') for line in lines])
     return data
 
-folder1 = "moveJ"
-folder2 = "No_blend"
+folder1 = "DMP"
+folder2 = "DMP_QP"
 data= read_exp_dat(f'Records/experiments/{folder1}/tcp_speed.txt')
 data_blend= read_exp_dat(f'Records/experiments/{folder2}/tcp_speed.txt')
-
-folder1 = "Filtered"
-folder2 = "Raw"
-
-data= np.loadtxt(f'Records/forces_filter.txt', delimiter=',')
-data_blend= np.loadtxt(f'Records/forces_raw.txt', delimiter=',')
 
 #data_gmm = read_exp_dat('Records\experiments/DMP_B_GMM_A/acc.txt')
 num_points = data_blend.shape[0]
