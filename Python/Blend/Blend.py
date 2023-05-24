@@ -595,28 +595,25 @@ class Blend():
         # Combine all three axis translations into one
         trans = np.ndarray(shape=(len(res_j0[3]),6))
 
-        for i in range(len(res_j0[4])):
-            trans[i] = np.array([res_j0[4][i],res_j1[4][i],res_j2[4][i], res_j3[4][i],res_j4[4][i],res_j5[4][i]])
+        num = 4
+        for i in range(len(res_j0[num])):
+            trans[i] = np.array([res_j0[num][i],res_j1[num][i],res_j2[num][i], res_j3[num][i],res_j4[num][i],res_j5[num][i]])
         
 
+               
         if plot:
+            """
             fig2, (ax02, ax12, ax22, ax32, ax42, ax52) = plt.subplots(nrows=6, ncols=1,figsize=(6,8))
             
-            
-            # Plot points and generated line for each axis
-            x_points = [2.5,12.5,15]
-            print(res_j0[3].shape)
-            tmp = res_j0[3][:len(traj1)]
-            print(len(tmp), len(traj1), len(traj2))
-            temp = np.concatenate([traj1[:-bsize1,:], trans, traj2[bsize2:,:]])
-            x_len_traj1 = np.arange(0, 5, 5/len(traj1))    #np.linspace(0, 15, len(traj1))
-            x_len_trans = np.linspace(0, 14, 35)
-            x_len_traj2 = np.arange(10, 15, 5/len(traj2))#np.linspace(0, 15, len(traj2))
-            x_len = np.arange(0, 15, 15/len(temp)) #np.linspace(0, 15, len(temp))
+            # Plot points and generated line for each axis            
+            #temp = np.concatenate([traj1[:-bsize1,:], traj2[bsize2:,:]])
+            temp = np.concatenate([traj1, traj2])
+            x_len = np.linspace(0, 30, len(temp))
+            #x_len = np.arange(0, 15, 15/len(temp)) 
             print(len(temp))
-            ax02.plot(x_points,via_j0,'*',x_len,temp[:,0], c='g', label='j0')
+            ax02.plot(x_len,temp[:,0], c='g', label='j0')
             #ax02.plot(x_len_traj1,traj1[:,0], x_len_traj2, traj2[:,0], c='c', label='x_ori')
-            #ax02.plot(res_j0[2],via_j0,'*',res_j0[3],trans[:,0], c='b', label='j0')
+            ax02.plot(res_j0[2]+5,via_j0,'*',res_j0[3]+5,trans[:,0], c='b', label='j0')
             ax02.plot(res_j0[3],trans[:,0], c='r',label='j0')
             ax12.plot(res_j1[2],via_j1,'*',res_j1[3],trans[:,1], label='j1')
             ax22.plot(res_j2[2],via_j2,'*',res_j2[3],trans[:,2], label='j2')
@@ -625,25 +622,32 @@ class Blend():
             ax52.plot(res_j5[2],via_j5,'*',res_j5[3],trans[:,5], label='j5')
             ax02.legend(); ax12.legend(); ax22.legend(); ax32.legend(); ax42.legend(); ax52.legend()
             plt.show()
-            
+            """
+            x_len = np.linspace(0, 2.65, len(traj1))
             fig, (ax0, ax1, ax2, ax3, ax4, ax5) = plt.subplots(nrows=6, ncols=1,figsize=(6,8))
             if plot_tcp:
-                ax0.plot(res_j0[2],via_j0,'*',res_j0[3],trans[:,0], label='x_blnd')
-                ax1.plot(res_j1[2],via_j1,'*',res_j1[3],trans[:,1], label='y')
-                ax2.plot(res_j2[2],via_j2,'*',res_j2[3],trans[:,2], label='z')
-                ax3.plot(res_j3[2],via_j3,'*',res_j3[3],trans[:,3], label='z')
-                ax4.plot(res_j4[2],via_j4,'*',res_j4[3],trans[:,4], label='ry')
-                ax5.plot(res_j5[2],via_j5,'*',res_j5[3],trans[:,5], label='rz')
+                ax0.plot(x_len,traj1[:,0], label='x')#ax0.plot(res_j0[2],via_j0,'*',res_j0[3],trans[:,0], label='x')
+                ax1.plot(x_len,traj1[:,1], label='y')#ax1.plot(res_j1[2],via_j1,'*',res_j1[3],trans[:,1], label='y')
+                ax2.plot(x_len,traj1[:,2], label='z')#ax2.plot(res_j2[2],via_j2,'*',res_j2[3],trans[:,2], label='z')
+                ax3.plot(x_len,traj1[:,3], label='rz')#ax3.plot(res_j3[2],via_j3,'*',res_j3[3],trans[:,3], label='rz')
+                ax4.plot(x_len,traj1[:,4], label='ry')#ax4.plot(res_j4[2],via_j4,'*',res_j4[3],trans[:,4], label='ry')
+                ax5.plot(x_len,traj1[:,5], label='rz')#ax5.plot(res_j5[2],via_j5,'*',res_j5[3],trans[:,5], label='rz')
+                
             else:
-                ax0.plot(res_j0[2],via_j0,'*',res_j0[3],trans[:,0], label='j0')
-                ax1.plot(res_j1[2],via_j1,'*',res_j1[3],trans[:,1], label='j1')
-                ax2.plot(res_j2[2],via_j2,'*',res_j2[3],trans[:,2], label='j2')
-                ax3.plot(res_j3[2],via_j3,'*',res_j3[3],trans[:,3], label='j3')
-                ax4.plot(res_j4[2],via_j4,'*',res_j4[3],trans[:,4], label='j4')
-                ax5.plot(res_j5[2],via_j5,'*',res_j5[3],trans[:,5], label='j5')
+                ax0.plot(res_j0[3],trans[:,0], label='j0')#ax0.plot(res_j0[2],via_j0,'*',res_j0[3],trans[:,0], label='j0')
+                ax1.plot(res_j1[3],trans[:,1], label='j1')#ax1.plot(res_j1[2],via_j1,'*',res_j1[3],trans[:,1], label='j1')
+                ax2.plot(res_j2[3],trans[:,2], label='j2')#ax2.plot(res_j2[2],via_j2,'*',res_j2[3],trans[:,2], label='j2')
+                ax3.plot(res_j3[3],trans[:,3], label='j3')#ax3.plot(res_j3[2],via_j3,'*',res_j3[3],trans[:,3], label='j3')
+                ax4.plot(res_j4[3],trans[:,4], label='j4')#ax4.plot(res_j4[2],via_j4,'*',res_j4[3],trans[:,4], label='j4')
+                ax5.plot(res_j5[3],trans[:,5], label='j5')#ax5.plot(res_j5[2],via_j5,'*',res_j5[3],trans[:,5], label='j5')
+                
+            fig.text(0.04, 0.70, 'Position [m]', va='center', rotation='vertical')
+            fig.text(0.04, 0.30, 'Axis-angle [rad]', va='center', rotation='vertical')
             
-            ax0.legend(); ax1.legend(); ax2.legend(); ax3.legend(); ax4.legend(); ax5.legend()
-            
+            ax5.set_xlabel('Time [s]')
+            for ax in [ax0, ax1, ax2, ax3, ax4, ax5]:
+                # Set legend center right
+                ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
             fig2 = plt.figure(figsize=(6,6))
             ax2 = fig2.add_subplot(111, projection='3d')
@@ -671,13 +675,13 @@ class Blend():
             ax2.set_xlabel('X')
             ax2.set_ylabel('Y')
             ax2.set_zlabel('Z')
-            ax2.set_title('Line through Points')
+            #ax2.set_title('Line through Points')
             ax2.set_xlim(-1,1)
             ax2.set_ylim(-1,1)
             ax2.set_zlim(-1,1)
             
             plt.show()
-            exit(1)
+            
         return np.concatenate([traj1[:-bsize1,:], trans, traj2[bsize2:,:]])
 
     def jointPositions(self):
